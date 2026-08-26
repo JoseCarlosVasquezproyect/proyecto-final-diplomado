@@ -1,0 +1,5 @@
+{
+  "DEMO_MODE": "false",
+  "SUPABASE_URL": "https://TU-PROYECTO.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "TU_CLAVE_PUBLICABLE_O_ANON"
+}

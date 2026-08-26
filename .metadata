@@ -1,0 +1,7 @@
+# Flutter project metadata.
+# Baseline aligned with Flutter stable 3.47.1 (framework revision 6655482ec0).
+# If native templates need refreshing on another Flutter version, use flutter create carefully as an upgrade step.
+version:
+  revision: "6655482ec0"
+  channel: "stable"
+project_type: app

@@ -1,0 +1,16 @@
+PROYECTO FINAL 360 · VALIDACIÓN ESTÁTICA
+=======================================
+
+Archivos Dart inspeccionados: 20
+Errores estructurales detectados: 0
+
+[OK] imports relativos existentes
+[OK] delimitadores básicos balanceados
+[OK] pubspec YAML
+[OK] scripts Bash con bash -n
+[OK] SQL contiene RLS/policies/grants
+[OK] metadata baseline Flutter stable 3.47.1 (rev 6655482ec0)
+
+LIMITACIÓN DE VALIDACIÓN
+El entorno de generación no tiene Flutter SDK. Por ello NO se ejecutaron flutter pub get, flutter analyze, flutter test ni flutter run aquí.
+Ejecutar scripts/preflight_docente_linux.sh o el equivalente Windows antes de la clase.

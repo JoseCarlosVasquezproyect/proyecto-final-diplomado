@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PF360 - DEMO (sin Supabase)",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": ["--dart-define-from-file=config/demo.json"]
+    },
+    {
+      "name": "PF360 - SUPABASE",
+      "request": "launch",
+      "type": "dart",
+      "toolArgs": ["--dart-define-from-file=config/local.json"]
+    }
+  ]
+}

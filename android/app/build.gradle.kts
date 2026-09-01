@@ -44,8 +44,29 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            // Un APK de produccion nunca debe quedar firmado con la clave debug.
+            // Cuando no exista el keystore, la verificacion al final de este
+            // archivo detiene la tarea de release antes de generar el artefacto.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
+    }
+}
+
+// Mantiene disponibles las tareas debug para desarrollo, pero evita por
+// completo que assembleRelease/bundleRelease generen un APK no distribuible.
+gradle.taskGraph.whenReady { graph ->
+    val requestsRelease = graph.allTasks.any { task ->
+        task.name.contains("release", ignoreCase = true) &&
+            (task.name.contains("assemble", ignoreCase = true) ||
+                task.name.contains("bundle", ignoreCase = true) ||
+                task.name.contains("package", ignoreCase = true))
+    }
+    if (requestsRelease && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Falta android/key.properties. Cree el keystore y configurelo segun android/key.properties.example antes de generar un release.",
+        )
     }
 }
 

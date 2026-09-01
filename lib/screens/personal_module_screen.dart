@@ -1,0 +1,61 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../controllers/gestion_controller.dart';
+import '../models/gestion_models.dart';
+import '../repositories/gestion_repository.dart';
+
+class PersonalModuleScreen extends StatefulWidget {
+  const PersonalModuleScreen({super.key, required this.tipo, required this.titulo});
+  final String tipo, titulo;
+  @override State<PersonalModuleScreen> createState() => _PersonalModuleScreenState();
+}
+class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
+  late Future<List<Json>> _future;
+  GestionRepository get repo => context.read<GestionController>().repository;
+  String get singular => widget.tipo == 'medico' ? 'médico' : widget.tipo == 'enfermero' ? 'enfermero' : 'pasante';
+  @override void initState() { super.initState(); _future = _load(); }
+  Future<List<Json>> _load() => repo.personalPorTipo(widget.tipo);
+  void _refresh() {
+    final nextItems = _load();
+    setState(() => _future = nextItems);
+  }
+  Future<void> _nuevo([Json? row]) async { final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => PersonalForm(tipo: widget.tipo, titulo: widget.titulo, initial: row))); if (ok == true && mounted) _refresh(); }
+  Future<void> _menu(String value, Json row) async {
+    if (value == 'ver') return _ver(row);
+    if (value == 'editar') return _nuevo(row);
+    final activo = row['estado'] == 'activo';
+    final confirmado = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: Text(activo ? 'Desactivar $singular' : 'Activar $singular'), content: Text('¿Deseas ${activo ? 'desactivar' : 'activar'} a ${row['nombre']} ${row['apellido']}?'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(activo ? 'Desactivar' : 'Activar'))]));
+    if (confirmado == true) { await repo.cambiarEstadoPersonal(row['id'].toString(), activo ? 'inactivo' : 'activo', '${activo ? 'Desactivó' : 'Activó'} ${row['nombre']} ${row['apellido']}'); if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$singular ${activo ? 'desactivado' : 'activado'} correctamente.'))); _refresh(); } }
+  }
+  Future<void> _ver(Json row) async {
+    final dias = await repo.diasTrabajo(row['id'].toString());
+    if (!mounted) return;
+    final data = <String, dynamic>{'Nombre': '${row['nombre']} ${row['apellido']}', 'CI': row['ci'], 'Sexo': row['sexo'], 'Teléfono': row['telefono'], 'Código': row['codigo']};
+    if (widget.tipo == 'medico') data.addAll({'Especialidad': row['especialidad_nombre'], 'Matrícula profesional': row['matricula_profesional']});
+    if (widget.tipo == 'enfermero') data.addAll({'Código de enfermero': row['codigo_enfermero'], 'Especialidad': row['especialidad_nombre']});
+    if (widget.tipo == 'pasante') data.addAll({'Universidad': row['universidad'], 'Carrera': row['carrera'], 'Área de práctica': row['area_practica'], 'Supervisor': row['supervisor_nombre'], 'Fecha de inicio': row['fecha_inicio'], 'Fecha de finalización': row['fecha_fin']});
+    data['Estado'] = row['estado'];
+    final horarios = dias.map((d) => '${d['dia_semana']}: ${d['hora_inicio']} - ${d['hora_fin']}').join('\n'); if (horarios.isNotEmpty) data['Días y horarios de trabajo'] = horarios;
+    await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Detalle'), content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: data.entries.where((e) => e.value != null && e.value.toString().isNotEmpty).map((e) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${e.key}: ${e.value}'))).toList()))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]));
+  }
+  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.titulo)), floatingActionButton: FloatingActionButton.extended(onPressed: _nuevo, icon: const Icon(Icons.add), label: Text('Nuevo $singular')), body: FutureBuilder<List<Json>>(future: _future, builder: (_, s) {
+    if (s.connectionState != ConnectionState.done) return const Center(child: Text('Cargando...'));
+    if (s.hasError) return const Center(child: Text('No se pudo cargar el personal.'));
+    final rows = s.data ?? []; if (rows.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('No hay ${widget.titulo.toLowerCase()} registrados'), const SizedBox(height: 16), FilledButton.icon(onPressed: _nuevo, icon: const Icon(Icons.add), label: Text('Nuevo $singular'))]));
+    return ListView.builder(padding: const EdgeInsets.all(16), itemCount: rows.length, itemBuilder: (_, i) { final p = rows[i]; final activo = p['estado'] == 'activo'; final resumen = widget.tipo == 'pasante' ? 'CI: ${p['ci']} · Universidad: ${p['universidad'] ?? '-'} · Estado: ${p['estado']}' : 'CI: ${p['ci']} · Estado: ${p['estado']}'; return Card(child: ListTile(title: Text('${p['codigo']} · ${p['nombre']} ${p['apellido']}'), subtitle: Text(resumen), trailing: PopupMenuButton<String>(tooltip: 'Show menu', onSelected: (v) => _menu(v, p), itemBuilder: (_) => [const PopupMenuItem(value: 'ver', child: Text('Ver')), const PopupMenuItem(value: 'editar', child: Text('Editar')), PopupMenuItem(value: 'estado', child: Text(activo ? 'Desactivar' : 'Activar'))]))); });
+  }));
+}
+
+class PersonalForm extends StatefulWidget { const PersonalForm({super.key, required this.tipo, required this.titulo, this.initial}); final String tipo, titulo; final Json? initial; @override State<PersonalForm> createState() => _PersonalFormState(); }
+class _PersonalFormState extends State<PersonalForm> {
+  final form = GlobalKey<FormState>(); late final TextEditingController codigo, nombre, apellido, ci, telefono, extra, carrera, area, inicio, fin;
+  late String sexo, estado; String? especialidad, supervisor; bool busy = false;
+  late Future<List<List<Json>>> _opciones;
+  GestionRepository get repo => context.read<GestionController>().repository;
+  @override void initState() { super.initState(); final row=widget.initial; sexo=row?['sexo']?.toString() ?? 'masculino'; estado=row?['estado']?.toString() ?? 'activo'; especialidad=row?['especialidad_id']?.toString(); supervisor=row?['supervisor_personal_id']?.toString(); codigo=TextEditingController(text: row?['codigo']?.toString() ?? ''); nombre=TextEditingController(text: row?['nombre']?.toString() ?? ''); apellido=TextEditingController(text: row?['apellido']?.toString() ?? ''); ci=TextEditingController(text: row?['ci']?.toString() ?? ''); telefono=TextEditingController(text: row?['telefono']?.toString() ?? ''); extra=TextEditingController(text: _extra(row)); carrera=TextEditingController(text: row?['carrera']?.toString() ?? ''); area=TextEditingController(text: row?['area_practica']?.toString() ?? ''); inicio=TextEditingController(text: row?['fecha_inicio']?.toString() ?? ''); fin=TextEditingController(text: row?['fecha_fin']?.toString() ?? ''); _opciones = Future.wait([repo.especialidades(), repo.personalPorTipo('medico')]); }
+  String _extra(Json? row) { if (widget.tipo == 'medico') return row?['matricula_profesional']?.toString() ?? ''; if (widget.tipo == 'enfermero') return row?['codigo_enfermero']?.toString() ?? ''; return row?['universidad']?.toString() ?? ''; }
+  @override void dispose() { for(final c in [codigo,nombre,apellido,ci,telefono,extra,carrera,area,inicio,fin]) { c.dispose(); } super.dispose(); }
+  Future<void> guardar() async { if (!form.currentState!.validate()) return; setState(() => busy = true); final personal = {'codigo': codigo.text.trim(), 'nombre': nombre.text.trim(), 'apellido': apellido.text.trim(), 'ci': ci.text.trim(), 'sexo': sexo, 'telefono': telefono.text.trim(), 'tipo_personal': widget.tipo, 'estado': estado}; final detalle = widget.tipo == 'medico' ? {'especialidad_id': especialidad, 'matricula_profesional': extra.text.trim()} : widget.tipo == 'enfermero' ? {'especialidad_id': especialidad, 'codigo_enfermero': extra.text.trim()} : {'universidad': extra.text.trim(), 'carrera': carrera.text.trim(), 'area_practica': area.text.trim(), 'fecha_inicio': inicio.text.trim().isEmpty ? null : inicio.text.trim(), 'fecha_fin': fin.text.trim().isEmpty ? null : fin.text.trim(), 'supervisor_personal_id': supervisor}; try { if (widget.initial == null) { await repo.crearPersonalConDetalle(personal: personal, tablaDetalle: widget.tipo == 'medico' ? 'medicos' : widget.tipo == 'enfermero' ? 'enfermeros' : 'pasantes', detalle: detalle, descripcion: 'Creó ${widget.tipo} ${nombre.text} ${apellido.text}'); } else { await repo.actualizarPersonalConDetalle(personalId: widget.initial!['id'].toString(), detalleId: widget.initial!['_detalle_id'].toString(), tipo: widget.tipo, personal: personal, detalle: detalle, descripcion: 'Modificó ${widget.tipo} ${nombre.text} ${apellido.text}'); } if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.initial == null ? 'Los datos fueron guardados correctamente.' : 'Los cambios fueron guardados correctamente.'))); Navigator.pop(context, true); } } catch (_) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudieron guardar los datos.'))); } finally { if(mounted) setState(() => busy = false); } }
+  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text('${widget.initial == null ? 'Nuevo' : 'Editar'} ${widget.titulo.substring(0, widget.titulo.length - 1)}')), body: FutureBuilder<List<List<Json>>>(future: _opciones, builder: (_, s) { if (s.connectionState != ConnectionState.done) return const Center(child: Text('Cargando...')); final especialidades = s.data?.first ?? [], supervisores = s.data?.last ?? []; return Form(key: form, child: ListView(padding: const EdgeInsets.all(20), children: [Text('Datos personales', style: Theme.of(context).textTheme.titleLarge), ...[_campo(codigo,'Código'),_campo(nombre,'Nombre'),_campo(apellido,'Apellido'),_campo(ci,'CI'),_campo(telefono,'Teléfono')], DropdownButtonFormField(value: sexo, decoration: const InputDecoration(labelText: 'Sexo'), items: const ['masculino','femenino','otro'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(), onChanged:(v)=>setState(()=>sexo=v!)), DropdownButtonFormField(value: estado, decoration: const InputDecoration(labelText: 'Estado'), items: const ['activo','inactivo','suspendido'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(), onChanged:(v)=>setState(()=>estado=v!)), const SizedBox(height:16), Text('Datos específicos', style: Theme.of(context).textTheme.titleLarge), if(widget.tipo != 'pasante') DropdownButtonFormField<String>(value: especialidad, decoration: const InputDecoration(labelText: 'Especialidad'), items: especialidades.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text(x['nombre'].toString()))).toList(), onChanged:(v)=>setState(()=>especialidad=v), validator:(v)=>v==null?'Selecciona una especialidad':null), _campo(extra, widget.tipo == 'medico' ? 'Matrícula profesional' : widget.tipo == 'enfermero' ? 'Código de enfermero' : 'Universidad'), if(widget.tipo == 'pasante') ...[_campo(carrera, 'Carrera'),_campo(area, 'Área de práctica'),_campo(inicio, 'Fecha de inicio (AAAA-MM-DD)', required:false),_campo(fin, 'Fecha de finalización (AAAA-MM-DD)', required:false),DropdownButtonFormField<String>(value: supervisor, decoration: const InputDecoration(labelText: 'Supervisor'), items: supervisores.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text('${x['nombre']} ${x['apellido']}'))).toList(), onChanged:(v)=>setState(()=>supervisor=v))], const SizedBox(height:24), FilledButton(onPressed: busy ? null : guardar, child: Text(busy ? 'Guardando...' : widget.initial == null ? 'Guardar' : 'Guardar cambios'))])); }));
+  Widget _campo(TextEditingController c, String label, {bool required = true}) => Padding(padding: const EdgeInsets.only(bottom:12), child: TextFormField(controller:c, decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()), validator:required ? (v)=>v==null||v.trim().isEmpty?'Este campo es obligatorio':null : null));
+}

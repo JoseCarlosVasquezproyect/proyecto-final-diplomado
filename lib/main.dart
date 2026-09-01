@@ -9,6 +9,8 @@ import 'controllers/preferences_controller.dart';
 import 'repositories/demo_registro_repository.dart';
 import 'repositories/registro_repository.dart';
 import 'repositories/supabase_registro_repository.dart';
+import 'repositories/gestion_repository.dart';
+import 'controllers/gestion_controller.dart';
 import 'services/preferences_service.dart';
 
 Future<void> main() async {
@@ -24,7 +26,7 @@ Future<void> main() async {
   if (config.useSupabase) {
     await Supabase.initialize(
       url: config.supabaseUrl,
-      anonKey: config.supabaseKey,
+      publishableKey: config.supabaseKey,
     );
     repository = SupabaseRegistroRepository(Supabase.instance.client);
   }
@@ -35,6 +37,8 @@ Future<void> main() async {
         Provider<AppConfig>.value(value: config),
         ChangeNotifierProvider<PreferencesController>.value(value: preferencesController),
         Provider<RegistroRepository>.value(value: repository),
+        if (config.useSupabase)
+          ChangeNotifierProvider<GestionController>(create: (_) => GestionController(GestionRepository(Supabase.instance.client))),
       ],
       child: const ProyectoFinalApp(),
     ),

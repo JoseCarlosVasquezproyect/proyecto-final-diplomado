@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_screen.dart';
 import 'login_screen.dart';
+import 'admin_gate.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -13,7 +13,7 @@ class AuthGate extends StatelessWidget {
       stream: client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         if (client.auth.currentSession == null) return const LoginScreen();
-        return const HomeScreen();
+        return const AdminGate();
       },
     );
   }

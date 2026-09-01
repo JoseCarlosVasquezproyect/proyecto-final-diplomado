@@ -56,18 +56,18 @@ android {
 
 // Mantiene disponibles las tareas debug para desarrollo, pero evita por
 // completo que assembleRelease/bundleRelease generen un APK no distribuible.
-gradle.taskGraph.whenReady { graph ->
-    val requestsRelease = graph.allTasks.any { task ->
-        task.name.contains("release", ignoreCase = true) &&
-            (task.name.contains("assemble", ignoreCase = true) ||
-                task.name.contains("bundle", ignoreCase = true) ||
-                task.name.contains("package", ignoreCase = true))
-    }
-    if (requestsRelease && !keystorePropertiesFile.exists()) {
-        throw GradleException(
-            "Falta android/key.properties. Cree el keystore y configurelo segun android/key.properties.example antes de generar un release.",
-        )
-    }
+// Se consulta StartParameter en lugar de TaskExecutionGraph: en Gradle 9 la
+// sobrecarga Kotlin de taskGraph.whenReady ya no acepta una lambda directamente.
+val requestsRelease = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("release", ignoreCase = true) &&
+        (taskName.contains("assemble", ignoreCase = true) ||
+            taskName.contains("bundle", ignoreCase = true) ||
+            taskName.contains("package", ignoreCase = true))
+}
+if (requestsRelease && !keystorePropertiesFile.exists()) {
+    throw GradleException(
+        "Falta android/key.properties. Cree el keystore y configurelo segun android/key.properties.example antes de generar un release.",
+    )
 }
 
 kotlin {

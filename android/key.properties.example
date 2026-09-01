@@ -1,6 +1,4 @@
-# Copie este archivo como android/key.properties y complete los valores.
-# No suba key.properties ni el archivo .jks/.keystore al control de versiones.
-storePassword=CAMBIAR_POR_UNA_CONTRASENA_SEGURA
-keyPassword=CAMBIAR_POR_UNA_CONTRASENA_SEGURA
-keyAlias=gestion_hospitalaria
-storeFile=../keystore/gestion-hospitalaria-release.jks
+storePassword=TU_CONTRASEÑA
+keyPassword=TU_CONTRASEÑA
+keyAlias=TU_ALIAS
+storeFile=keystore/TU_ARCHIVO.jks

@@ -63,9 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.hub_outlined, size: 56),
+                      SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: Image.asset(
+                          'iconos/equipo-medico.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      Text('Proyecto Final 360', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      Text('Gestion Hospitalaria', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(_register ? 'Crear cuenta de aula' : 'Iniciar sesión', textAlign: TextAlign.center),
                       const SizedBox(height: 24),

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:proyecto_final_360/models/registro.dart';
+import 'package:gestion_hospitalaria/models/registro.dart';
 
 void main() {
   test('Registro.fromMap convierte datos correctamente', () {

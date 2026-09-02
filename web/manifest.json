@@ -1,6 +1,6 @@
 {
-  "name": "Proyecto Final 360",
-  "short_name": "Proyecto 360",
+  "name": "Gestion Hospitalaria",
+  "short_name": "Gestion Hospitalaria",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#F6FAF8",

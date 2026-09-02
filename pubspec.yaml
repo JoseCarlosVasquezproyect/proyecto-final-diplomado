@@ -1,4 +1,4 @@
-name: proyecto_final_360
+name: gestion_hospitalaria
 description: Base academica generica y adaptable para el Trabajo Final del Diplomado UAJMS.
 publish_to: "none"
 version: 1.0.0+1
@@ -20,3 +20,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - iconos/equipo-medico.png

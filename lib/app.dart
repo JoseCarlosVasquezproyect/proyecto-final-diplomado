@@ -16,7 +16,7 @@ class ProyectoFinalApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Proyecto Final 360',
+      title: 'Gestion Hospitalaria',
       themeMode: prefs.themeMode,
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true, brightness: Brightness.light),
       darkTheme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true, brightness: Brightness.dark),

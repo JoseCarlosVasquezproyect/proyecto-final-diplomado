@@ -8,6 +8,9 @@ class GestionController extends ChangeNotifier {
   Administrador? administrador;
   Future<bool> verificarAdministrador() async { administrador = await repository.administradorActual(); notifyListeners(); return administrador != null; }
   Future<List<Json>> listar(String tabla, {String order = 'created_at'}) => repository.list(tabla, order: order);
+  Future<List<Turno>> listarTurnos() => repository.listarTurnos();
+  Future<void> guardarTurno(Turno turno) => repository.guardarTurno(turno);
+  Future<void> cancelarTurno(String id) => repository.cancelarTurno(id);
   Future<int> contar(String tabla, {String? campo, Object? valor}) => repository.count(tabla, column: campo, value: valor);
   Future<void> guardar(String tabla, Json values, {String? id, String? descripcion}) async { final row = id == null ? await repository.insert(tabla, values) : await repository.update(tabla, id, values); await repository.audit(action: id == null ? 'INSERT' : 'UPDATE', table: tabla, recordId: row['id'].toString(), description: descripcion); }
 }

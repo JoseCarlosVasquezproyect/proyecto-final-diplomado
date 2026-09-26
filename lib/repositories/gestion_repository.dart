@@ -12,6 +12,24 @@ class GestionRepository {
     return row == null ? null : Administrador.fromMap(row);
   }
   Future<List<Json>> list(String table, {String order = 'created_at', bool ascending = false}) async => List<Json>.from(await client.from(table).select().order(order, ascending: ascending));
+  Future<List<Turno>> listarTurnos() async {
+    final rows = List<Json>.from(await client
+        .from('turnos')
+        .select()
+        .order('fecha', ascending: true)
+        .order('hora_inicio', ascending: true));
+    return rows.map(Turno.fromMap).toList();
+  }
+  Future<void> guardarTurno(Turno turno) async {
+    final row = turno.id == null
+        ? await insert('turnos', turno.toMap())
+        : await update('turnos', turno.id!, turno.toMap());
+    await audit(action: turno.id == null ? 'INSERT' : 'UPDATE', table: 'turnos', recordId: row['id'].toString(), description: turno.id == null ? 'Creó un turno' : 'Actualizó un turno');
+  }
+  Future<void> cancelarTurno(String id) async {
+    final row = await update('turnos', id, {'estado': 'cancelado'});
+    await audit(action: 'UPDATE', table: 'turnos', recordId: row['id'].toString(), description: 'Canceló un turno');
+  }
   Future<int> count(String table, {String? column, Object? value}) async {
     var query = client.from(table).select();
     if (column != null && value != null) query = query.eq(column, value);

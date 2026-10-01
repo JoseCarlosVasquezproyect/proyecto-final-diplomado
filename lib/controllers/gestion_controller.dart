@@ -5,6 +5,9 @@ import '../repositories/gestion_repository.dart';
 class GestionController extends ChangeNotifier {
   GestionController(this.repository);
   final GestionRepository repository;
+  Future<List<Especialidad>> listarEspecialidades() => repository.listarEspecialidades();
+  Future<void> guardarEspecialidad(Especialidad especialidad) => repository.guardarEspecialidad(especialidad);
+  Future<void> darDeBajaEspecialidad(String id) => repository.darDeBajaEspecialidad(id);
   Administrador? administrador;
   Future<bool> verificarAdministrador() async { administrador = await repository.administradorActual(); notifyListeners(); return administrador != null; }
   Future<List<Json>> listar(String tabla, {String order = 'created_at'}) => repository.list(tabla, order: order);

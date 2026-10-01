@@ -5,6 +5,35 @@ import '../models/gestion_models.dart';
 class GestionRepository {
   GestionRepository(this.client);
   final SupabaseClient client;
+  Future<List<Especialidad>> listarEspecialidades() async {
+    final rows = await client.from('especialidades')
+        .select('id, nombre, descripcion, estado').order('nombre');
+    return rows.map(Especialidad.fromMap).toList();
+  }
+
+  Future<void> guardarEspecialidad(Especialidad especialidad) async {
+    final nombre = especialidad.nombre.trim();
+    if (nombre.length < 2 || nombre.length > 100 ||
+        !['activo', 'inactivo'].contains(especialidad.estado)) {
+      throw ArgumentError('Los datos de la especialidad no son válidos.');
+    }
+    final values = {
+      'nombre': nombre,
+      'descripcion': especialidad.descripcion?.trim() ?? '',
+      'estado': especialidad.estado,
+    };
+    if (especialidad.id == null) {
+      await client.from('especialidades').insert(values).select('id').single();
+    } else {
+      await client.from('especialidades').update(values)
+          .eq('id', especialidad.id!).select('id').single();
+    }
+  }
+
+  Future<void> darDeBajaEspecialidad(String id) async {
+    await client.from('especialidades').update({'estado': 'inactivo'})
+        .eq('id', id).select('id').single();
+  }
   Future<Administrador?> administradorActual() async {
     final id = client.auth.currentUser?.id;
     if (id == null) return null;

@@ -2,10 +2,57 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/gestion_models.dart';
 import '../models/personal_errors.dart';
 import '../models/asignacion_errors.dart';
+import '../models/asistencia_errors.dart';
 
 class GestionRepository {
   GestionRepository(this.client);
   final SupabaseClient client;
+  Future<List<AsignacionTurno>> listarAsistencias() async {
+    final admin = await administradorActual();
+    if (admin == null) {
+      throw const AsistenciaException('No tienes permisos para controlar asistencia.');
+    }
+    final rows = await listarAsignaciones();
+    rows.sort((a, b) {
+      if (a.turno == null) return b.turno == null ? 0 : 1;
+      if (b.turno == null) return -1;
+      final fecha = b.turno!.fecha.compareTo(a.turno!.fecha);
+      if (fecha != 0) return fecha;
+      final hora = a.turno!.horaInicio.compareTo(b.turno!.horaInicio);
+      if (hora != 0) return hora;
+      return (a.personal?.nombreCompleto ?? '').compareTo(b.personal?.nombreCompleto ?? '');
+    });
+    return rows;
+  }
+
+  Future<void> marcarAsistencia({required String asignacionId, required String estado, required String estadoAnterior}) async {
+    if (!['cumplido', 'falta'].contains(estado) ||
+        !['pendiente', 'cumplido', 'falta'].contains(estadoAnterior)) {
+      throw const AsistenciaException('El estado de asistencia seleccionado no es válido.');
+    }
+    final authId = client.auth.currentUser?.id;
+    if (authId == null) {
+      throw const AsistenciaException('La sesión no es válida. Vuelve a iniciar sesión.');
+    }
+    final admin = await administradorActual();
+    if (admin?.id == null) {
+      throw const AsistenciaException('No tienes permisos para controlar asistencia.');
+    }
+    if (admin!.userId != authId || client.auth.currentUser?.id != authId) {
+      throw const AsistenciaException('La sesión no es válida. Vuelve a iniciar sesión.');
+    }
+    final rows = await client.from('asignaciones_turno').update({
+      'estado_asistencia': estado,
+      'asistencia_marcada_por': admin.id!,
+      'asistencia_marcada_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', asignacionId).eq('estado_asistencia', estadoAnterior).select('id');
+    if (rows.isEmpty) {
+      throw const AsistenciaException(
+        'La asistencia cambió o ya no está disponible. Revisa el estado actualizado antes de marcarla.',
+        recargar: true,
+      );
+    }
+  }
   Future<List<AsignacionTurno>> listarAsignaciones() async {
     final rows = await client.from('asignaciones_turno').select(
       'id, turno_id, personal_id, rol_en_turno, observaciones, estado_asistencia, '

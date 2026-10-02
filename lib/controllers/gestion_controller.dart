@@ -5,6 +5,8 @@ import '../repositories/gestion_repository.dart';
 class GestionController extends ChangeNotifier {
   GestionController(this.repository);
   final GestionRepository repository;
+  Future<List<AsignacionTurno>> listarAsistencias() => repository.listarAsistencias();
+  Future<void> marcarAsistencia({required String asignacionId, required String estado, required String estadoAnterior}) => repository.marcarAsistencia(asignacionId: asignacionId, estado: estado, estadoAnterior: estadoAnterior);
   Future<List<AsignacionTurno>> listarAsignaciones() => repository.listarAsignaciones();
   Future<List<Turno>> turnosParaAsignacion() => repository.turnosParaAsignacion();
   Future<List<Personal>> personalParaAsignacion() => repository.personalParaAsignacion();

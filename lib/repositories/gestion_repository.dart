@@ -1,10 +1,91 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/gestion_models.dart';
 import '../models/personal_errors.dart';
+import '../models/asignacion_errors.dart';
 
 class GestionRepository {
   GestionRepository(this.client);
   final SupabaseClient client;
+  Future<List<AsignacionTurno>> listarAsignaciones() async {
+    final rows = await client.from('asignaciones_turno').select(
+      'id, turno_id, personal_id, rol_en_turno, observaciones, estado_asistencia, '
+      'turnos(id, fecha, tipo, hora_inicio, hora_fin, area, estado), '
+      'personal(id, codigo, nombre, apellido, tipo_personal, estado, especialidad_id, especialidades(nombre))',
+    ).order('created_at', ascending: false);
+    return rows.map(AsignacionTurno.fromMap).toList();
+  }
+
+  Future<List<Turno>> turnosParaAsignacion() async {
+    final rows = await client.from('turnos')
+        .select('id, fecha, tipo, hora_inicio, hora_fin, area, estado')
+        .neq('estado', 'cancelado').order('fecha').order('hora_inicio');
+    return rows.map(Turno.fromMap).toList();
+  }
+
+  Future<List<Personal>> personalParaAsignacion() async {
+    final rows = await client.from('personal')
+        .select('id, codigo, nombre, apellido, tipo_personal, estado, especialidad_id, especialidades(nombre)')
+        .eq('estado', 'activo').order('apellido').order('nombre');
+    return rows.map(Personal.fromMap).toList();
+  }
+
+  Future<void> guardarAsignacion({String? id, required String turnoId, required String personalId, required String observaciones}) async {
+    final anterior = id == null ? null : await client.from('asignaciones_turno')
+        .select('turno_id, personal_id').eq('id', id).single();
+    // Volver a leer el tipo real evita guardar un rol desactualizado del selector.
+    final persona = await client.from('personal').select('tipo_personal, estado')
+        .eq('id', personalId).maybeSingle();
+    if (persona == null || (persona['estado'] != 'activo' && anterior?['personal_id'] != personalId)) {
+      throw const AsignacionException('Selecciona un personal activo. Recarga las opciones.');
+    }
+    final rol = persona['tipo_personal'];
+    if (!['medico', 'enfermero', 'pasante'].contains(rol)) {
+      throw const AsignacionException('El tipo del personal seleccionado no es válido.');
+    }
+    final turno = await client.from('turnos').select('estado').eq('id', turnoId).maybeSingle();
+    if (turno == null || (turno['estado'] == 'cancelado' && anterior?['turno_id'] != turnoId)) {
+      throw const AsignacionException('El turno seleccionado no está disponible. Recarga las opciones.');
+    }
+    // El trigger BEFORE puede detectar solapamiento antes de que se evalúe UNIQUE.
+    // Consultar el par exacto permite distinguir duplicidad de otro turno solapado.
+    if (await _asignacionDuplicada(turnoId, personalId, id)) {
+      throw const AsignacionException('Este personal ya está asignado al turno seleccionado.');
+    }
+    final values = {'rol_en_turno': rol, 'observaciones': observaciones.trim()};
+    try {
+      if (id == null) {
+        await client.from('asignaciones_turno').insert({
+          ...values, 'turno_id': turnoId, 'personal_id': personalId,
+        }).select('id').single();
+      } else {
+        // Enviar las FK cuando cambian activa la validación del trigger existente.
+        if (anterior!['turno_id'] != turnoId) values['turno_id'] = turnoId;
+        if (anterior['personal_id'] != personalId) values['personal_id'] = personalId;
+        await client.from('asignaciones_turno').update(values).eq('id', id).select('id').single();
+      }
+    } on PostgrestException catch (error) {
+      if (error.message.toLowerCase().contains('solap')) {
+        // Una asignación simultánea al mismo turno puede haberse creado tras la consulta.
+        var duplicada = false;
+        try {
+          duplicada = await _asignacionDuplicada(turnoId, personalId, id);
+        } catch (_) {
+          // Conservar el error original si no se puede verificar el par exacto.
+        }
+        if (duplicada) {
+          throw const AsignacionException('Este personal ya está asignado al turno seleccionado.');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> _asignacionDuplicada(String turnoId, String personalId, String? excluirId) async {
+    var query = client.from('asignaciones_turno').select('id')
+        .eq('turno_id', turnoId).eq('personal_id', personalId);
+    if (excluirId != null) query = query.neq('id', excluirId);
+    return await query.maybeSingle() != null;
+  }
   Future<List<Personal>> listarPersonal() async {
     final rows = await client.from('personal').select(
       'id, codigo, nombre, apellido, ci, sexo, telefono, tipo_personal, estado, especialidad_id, especialidades(nombre)',

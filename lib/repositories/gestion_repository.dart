@@ -1,10 +1,59 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/gestion_models.dart';
+import '../models/personal_errors.dart';
 
 class GestionRepository {
   GestionRepository(this.client);
   final SupabaseClient client;
+  Future<List<Personal>> listarPersonal() async {
+    final rows = await client.from('personal').select(
+      'id, codigo, nombre, apellido, ci, sexo, telefono, tipo_personal, estado, especialidad_id, especialidades(nombre)',
+    ).order('nombre').order('apellido');
+    return rows.map(Personal.fromMap).toList();
+  }
+
+  Future<List<Especialidad>> especialidadesParaPersonal({String? actualId}) async {
+    var query = client.from('especialidades').select('id, nombre, descripcion, estado');
+    query = actualId == null
+        ? query.eq('estado', 'activo')
+        : query.or('estado.eq.activo,id.eq.$actualId');
+    final rows = await query.order('nombre');
+    return rows.map(Especialidad.fromMap).toList();
+  }
+
+  Future<void> crearPersonal(Personal personal, {required String email, required String password}) async {
+    final body = {...personal.toMap(), 'email': email.trim().toLowerCase(), 'password': password};
+    try {
+      final response = await client.functions.invoke('crear-personal', body: body);
+      final data = response.data;
+      if (response.status < 200 || response.status >= 300 ||
+          (data is Map && (data['error'] != null || data['success'] == false))) {
+        throw PersonalOperationException(mensajeErrorAltaPersonal(response.status, data));
+      }
+    } on FunctionException catch (error) {
+      throw PersonalOperationException(mensajeErrorAltaPersonal(error.status, error.details));
+    } on PersonalOperationException {
+      rethrow;
+    } catch (_) {
+      throw const PersonalOperationException('No se pudo registrar el personal.');
+    } finally {
+      // No conservar credenciales en estructuras del repositorio.
+      body.clear();
+      password = '';
+      email = '';
+    }
+  }
+
+  Future<void> actualizarPersonal(Personal personal) async {
+    if (personal.id == null) throw const PersonalOperationException('No se pudo identificar el personal.');
+    await client.from('personal').update(personal.toMap())
+        .eq('id', personal.id!).select('id').single();
+  }
+
+  Future<void> darDeBajaPersonal(String id) async {
+    await client.from('personal').update({'estado': 'inactivo'})
+        .eq('id', id).select('id').single();
+  }
   Future<List<Especialidad>> listarEspecialidades() async {
     final rows = await client.from('especialidades')
         .select('id, nombre, descripcion, estado').order('nombre');
@@ -67,96 +116,6 @@ class GestionRepository {
   }
   Future<Json> insert(String table, Json values) async => await client.from(table).insert(await _trace(values, true)).select().single();
   Future<Json> update(String table, String id, Json values) async => await client.from(table).update(await _trace(values, false)).eq('id', id).select().single();
-  /// Devuelve el personal junto con su tabla de detalle. El id expuesto es el
-  /// de `personal`, que es el que se usa para estado y datos generales.
-  Future<List<Json>> personalPorTipo(String tipo) async {
-    final table = _tablaDetalle(tipo);
-    // `pasantes` tiene dos referencias a personal. Se especifica la FK de
-    // personal_id para no confundirla con supervisor_personal_id.
-    final select = switch (tipo) {
-      'pasante' => '*, personal!pasantes_personal_id_fkey(*), supervisor:personal!pasantes_supervisor_personal_id_fkey(nombre, apellido)',
-      _ => '*, personal!inner(*), especialidades(*)',
-    };
-    final rows = List<Json>.from(await client
-        .from(table)
-        .select(select)
-        .eq('personal.tipo_personal', tipo)
-        .order('nombre', referencedTable: 'personal'));
-    return rows.map((detail) {
-      final personal = Json.from(detail['personal'] as Map);
-      final result = Json.from(detail)
-        ..remove('personal')
-        ..remove('especialidades')
-        ..remove('supervisor')
-        ..['_detalle_id'] = detail['id']
-        ..addAll(personal);
-      final especialidad = detail['especialidades'];
-      if (especialidad is Map) result['especialidad_nombre'] = especialidad['nombre'];
-      final supervisor = detail['supervisor'];
-      if (supervisor is Map) {
-        result['supervisor_nombre'] = [supervisor['nombre'], supervisor['apellido']]
-            .whereType<String>()
-            .join(' ');
-      }
-      return result;
-    }).toList();
-  }
-  Future<List<Json>> especialidades() async => List<Json>.from(await client.from('especialidades').select().eq('estado', 'activo').order('nombre'));
-  Future<List<Json>> detallesPersonal(String tabla) async => List<Json>.from(await client.from(tabla).select());
-  Future<void> crearPersonalConDetalle({required Json personal, required String tablaDetalle, required Json detalle, required String descripcion}) async {
-    try {
-      await _verificarEspecialidad(tablaDetalle, detalle['especialidad_id']);
-      // El id de personal, no el id de auth.users, es la FK del detalle.
-      final creado = await insert('personal', personal);
-      await client.from(tablaDetalle).insert(_sinNulos({...detalle, 'personal_id': creado['id']})).select().single();
-      await audit(action: 'INSERT', table: tablaDetalle, recordId: creado['id'].toString(), description: descripcion);
-    } catch (error, stackTrace) {
-      _registrarErrorSupabase(error, stackTrace);
-      // No se borra el personal para no perder trazabilidad si el detalle falla.
-      rethrow;
-    }
-  }
-  Future<void> desactivarPersonal(String id, String descripcion) async {
-    await cambiarEstadoPersonal(id, 'inactivo', descripcion);
-  }
-  Future<void> cambiarEstadoPersonal(String id, String estado, String descripcion) async {
-    await update('personal', id, {'estado': estado});
-    await audit(action: 'UPDATE', table: 'personal', recordId: id, description: descripcion);
-  }
-  Future<void> actualizarPersonalConDetalle({required String personalId, required String detalleId, required String tipo, required Json personal, required Json detalle, required String descripcion}) async {
-    try {
-      final tablaDetalle = _tablaDetalle(tipo);
-      await _verificarEspecialidad(tablaDetalle, detalle['especialidad_id']);
-      await update('personal', personalId, personal);
-      await client.from(tablaDetalle).update(_sinNulos(detalle)).eq('id', detalleId).select().single();
-      await audit(action: 'UPDATE', table: tablaDetalle, recordId: personalId, description: descripcion);
-    } catch (error, stackTrace) {
-      _registrarErrorSupabase(error, stackTrace);
-      rethrow;
-    }
-  }
-  Future<List<Json>> diasTrabajo(String personalId) async => List<Json>.from(await client.from('personal_dias_trabajo').select().eq('personal_id', personalId).order('dia_semana'));
-  String _tablaDetalle(String tipo) => switch (tipo) { 'medico' => 'medicos', 'enfermero' => 'enfermeros', 'pasante' => 'pasantes', _ => throw ArgumentError('Tipo de personal no válido: $tipo') };
-  Json _sinNulos(Json values) => Json.from(values)..removeWhere((key, value) => value == null);
-  Future<void> _verificarEspecialidad(String tablaDetalle, Object? especialidadId) async {
-    if (tablaDetalle != 'medicos' && tablaDetalle != 'enfermeros') return;
-    if (especialidadId == null || especialidadId.toString().isEmpty) {
-      throw ArgumentError('Debe seleccionarse una especialidad válida.');
-    }
-    final especialidad = await client.from('especialidades').select('id').eq('id', especialidadId).maybeSingle();
-    if (especialidad == null) throw StateError('La especialidad seleccionada no existe.');
-  }
-  void _registrarErrorSupabase(Object error, StackTrace stackTrace) {
-    if (error is PostgrestException) {
-      debugPrint('Error Supabase: ${error.message}');
-      debugPrint('Details: ${error.details}');
-      debugPrint('Hint: ${error.hint}');
-      debugPrint('Code: ${error.code}');
-    } else {
-      debugPrint('Error al guardar en Supabase: $error');
-    }
-    debugPrintStack(stackTrace: stackTrace);
-  }
   Future<void> audit({required String action, required String table, required String recordId, String? description}) async { final admin = await administradorActual(); if (admin == null) return; try { await client.from('auditoria').insert(Auditoria(administradorId: admin.id, accion: action, tabla: table, registroId: recordId, descripcion: description).toMap()); } catch (_) {} }
   Future<Json> _trace(Json values, bool creating) async { final admin = await administradorActual(); final result = Json.from(values)..removeWhere((k,v) => v == null); if (admin != null) result[creating ? 'created_by' : 'updated_by'] = admin.id; return result; }
 }

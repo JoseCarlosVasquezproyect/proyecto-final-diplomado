@@ -2,60 +2,521 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/gestion_controller.dart';
 import '../models/gestion_models.dart';
-import '../repositories/gestion_repository.dart';
+import '../models/personal_errors.dart';
+
+const _sexos = ['masculino', 'femenino', 'otro'];
+const _tipos = ['medico', 'enfermero', 'pasante'];
+const _estados = ['activo', 'inactivo', 'suspendido'];
+String _etiqueta(String value) =>
+    const {
+      'masculino': 'Masculino',
+      'femenino': 'Femenino',
+      'otro': 'Otro',
+      'medico': 'Médico',
+      'enfermero': 'Enfermero',
+      'pasante': 'Pasante',
+      'activo': 'Activo',
+      'inactivo': 'Inactivo',
+      'suspendido': 'Suspendido',
+    }[value] ??
+    value;
 
 class PersonalModuleScreen extends StatefulWidget {
-  const PersonalModuleScreen({super.key, required this.tipo, required this.titulo});
-  final String tipo, titulo;
-  @override State<PersonalModuleScreen> createState() => _PersonalModuleScreenState();
-}
-class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
-  late Future<List<Json>> _future;
-  GestionRepository get repo => context.read<GestionController>().repository;
-  String get singular => widget.tipo == 'medico' ? 'médico' : widget.tipo == 'enfermero' ? 'enfermero' : 'pasante';
-  @override void initState() { super.initState(); _future = _load(); }
-  Future<List<Json>> _load() => repo.personalPorTipo(widget.tipo);
-  void _refresh() {
-    final nextItems = _load();
-    setState(() => _future = nextItems);
-  }
-  Future<void> _nuevo([Json? row]) async { final ok = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => PersonalForm(tipo: widget.tipo, titulo: widget.titulo, initial: row))); if (ok == true && mounted) _refresh(); }
-  Future<void> _menu(String value, Json row) async {
-    if (value == 'ver') return _ver(row);
-    if (value == 'editar') return _nuevo(row);
-    final activo = row['estado'] == 'activo';
-    final confirmado = await showDialog<bool>(context: context, builder: (_) => AlertDialog(title: Text(activo ? 'Desactivar $singular' : 'Activar $singular'), content: Text('¿Deseas ${activo ? 'desactivar' : 'activar'} a ${row['nombre']} ${row['apellido']}?'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(activo ? 'Desactivar' : 'Activar'))]));
-    if (confirmado == true) { await repo.cambiarEstadoPersonal(row['id'].toString(), activo ? 'inactivo' : 'activo', '${activo ? 'Desactivó' : 'Activó'} ${row['nombre']} ${row['apellido']}'); if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$singular ${activo ? 'desactivado' : 'activado'} correctamente.'))); _refresh(); } }
-  }
-  Future<void> _ver(Json row) async {
-    final dias = await repo.diasTrabajo(row['id'].toString());
-    if (!mounted) return;
-    final data = <String, dynamic>{'Nombre': '${row['nombre']} ${row['apellido']}', 'CI': row['ci'], 'Sexo': row['sexo'], 'Teléfono': row['telefono'], 'Código': row['codigo']};
-    if (widget.tipo == 'medico') data.addAll({'Especialidad': row['especialidad_nombre'], 'Matrícula profesional': row['matricula_profesional']});
-    if (widget.tipo == 'enfermero') data.addAll({'Código de enfermero': row['codigo_enfermero'], 'Especialidad': row['especialidad_nombre']});
-    if (widget.tipo == 'pasante') data.addAll({'Universidad': row['universidad'], 'Carrera': row['carrera'], 'Área de práctica': row['area_practica'], 'Supervisor': row['supervisor_nombre'], 'Fecha de inicio': row['fecha_inicio'], 'Fecha de finalización': row['fecha_fin']});
-    data['Estado'] = row['estado'];
-    final horarios = dias.map((d) => '${d['dia_semana']}: ${d['hora_inicio']} - ${d['hora_fin']}').join('\n'); if (horarios.isNotEmpty) data['Días y horarios de trabajo'] = horarios;
-    await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Detalle'), content: SizedBox(width: 520, child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: data.entries.where((e) => e.value != null && e.value.toString().isNotEmpty).map((e) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${e.key}: ${e.value}'))).toList()))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))]));
-  }
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.titulo)), floatingActionButton: FloatingActionButton.extended(onPressed: _nuevo, icon: const Icon(Icons.add), label: Text('Nuevo $singular')), body: FutureBuilder<List<Json>>(future: _future, builder: (_, s) {
-    if (s.connectionState != ConnectionState.done) return const Center(child: Text('Cargando...'));
-    if (s.hasError) return const Center(child: Text('No se pudo cargar el personal.'));
-    final rows = s.data ?? []; if (rows.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('No hay ${widget.titulo.toLowerCase()} registrados'), const SizedBox(height: 16), FilledButton.icon(onPressed: _nuevo, icon: const Icon(Icons.add), label: Text('Nuevo $singular'))]));
-    return ListView.builder(padding: const EdgeInsets.all(16), itemCount: rows.length, itemBuilder: (_, i) { final p = rows[i]; final activo = p['estado'] == 'activo'; final resumen = widget.tipo == 'pasante' ? 'CI: ${p['ci']} · Universidad: ${p['universidad'] ?? '-'} · Estado: ${p['estado']}' : 'CI: ${p['ci']} · Estado: ${p['estado']}'; return Card(child: ListTile(title: Text('${p['codigo']} · ${p['nombre']} ${p['apellido']}'), subtitle: Text(resumen), trailing: PopupMenuButton<String>(tooltip: 'Show menu', onSelected: (v) => _menu(v, p), itemBuilder: (_) => [const PopupMenuItem(value: 'ver', child: Text('Ver')), const PopupMenuItem(value: 'editar', child: Text('Editar')), PopupMenuItem(value: 'estado', child: Text(activo ? 'Desactivar' : 'Activar'))]))); });
-  }));
+  const PersonalModuleScreen({super.key});
+  @override
+  State<PersonalModuleScreen> createState() => _PersonalModuleScreenState();
 }
 
-class PersonalForm extends StatefulWidget { const PersonalForm({super.key, required this.tipo, required this.titulo, this.initial}); final String tipo, titulo; final Json? initial; @override State<PersonalForm> createState() => _PersonalFormState(); }
+class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
+  List<Personal> _personal = [];
+  final _busqueda = TextEditingController();
+  bool _cargando = true;
+  String? _error;
+  int _consulta = 0;
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  @override
+  void dispose() {
+    _busqueda.dispose();
+    super.dispose();
+  }
+
+  Future<void> _cargar({bool limpiarBusqueda = false}) async {
+    if (!mounted) return;
+    final consulta = ++_consulta;
+    setState(() {
+      _cargando = true;
+      _error = null;
+      if (limpiarBusqueda) _busqueda.clear();
+    });
+    try {
+      final rows = await context.read<GestionController>().listarPersonal();
+      if (!mounted || consulta != _consulta) return;
+      setState(() {
+        _personal = rows;
+        _cargando = false;
+      });
+    } catch (error) {
+      if (!mounted || consulta != _consulta) return;
+      setState(() {
+        _error = mensajeErrorPersonal(error);
+        _cargando = false;
+      });
+    }
+  }
+
+  Future<void> _abrirFormulario([Personal? personal]) async {
+    final resultado = await Navigator.push<_Resultado>(
+      context,
+      MaterialPageRoute(builder: (_) => PersonalForm(initial: personal)),
+    );
+    if (!mounted || resultado == null) return;
+    await _cargar(limpiarBusqueda: true);
+    if (!mounted) return;
+    final mensaje = resultado == _Resultado.baja
+        ? 'Personal dado de baja correctamente.'
+        : personal == null
+            ? 'Personal creado correctamente.'
+            : 'Personal actualizado correctamente.';
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Gestión de Personal')),
+        floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _abrirFormulario(),
+            icon: const Icon(Icons.add),
+            label: const Text('Nuevo Personal')),
+        body: _contenido(),
+      );
+
+  Widget _contenido() {
+    if (_cargando) return const Center(child: CircularProgressIndicator());
+    if (_error != null) return _EstadoError(mensaje: _error!, onRetry: _cargar);
+    final consulta = _busqueda.text.trim().toLowerCase();
+    final rows = _personal
+        .where((p) => [
+              p.codigo,
+              p.nombre,
+              p.apellido,
+              p.nombreCompleto,
+              p.ci ?? '',
+              p.tipoPersonal,
+              _etiqueta(p.tipoPersonal),
+              p.especialidadNombre ?? '',
+              p.estado
+            ].any((value) => value.toLowerCase().contains(consulta)))
+        .toList();
+    return Column(children: [
+      Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _busqueda,
+            decoration: const InputDecoration(
+                labelText: 'Buscar',
+                hintText: 'Código, nombre, CI, tipo, especialidad o estado',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder()),
+            onChanged: (_) => setState(() {}),
+          )),
+      Expanded(
+        child: _personal.isEmpty
+            ? const Center(child: Text('No existe personal registrado.'))
+            : rows.isEmpty
+                ? const Center(
+                    child:
+                        Text('No hay personal que coincida con la búsqueda.'))
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
+                    itemCount: rows.length,
+                    itemBuilder: (_, index) {
+                      final p = rows[index];
+                      return Card(
+                          child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p.codigo,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge),
+                                    Text(p.nombreCompleto,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 8),
+                                    Text('Tipo: ${_etiqueta(p.tipoPersonal)}'),
+                                    Text(
+                                        'Especialidad: ${p.especialidadNombre ?? 'Sin especialidad'}'),
+                                    Text('CI: ${p.ci ?? 'Sin registrar'}'),
+                                    Text('Sexo: ${_etiqueta(p.sexo)}'),
+                                    Text(
+                                        'Teléfono: ${p.telefono ?? 'Sin registrar'}'),
+                                    Chip(
+                                        label: Text(
+                                            'Estado: ${_etiqueta(p.estado)}')),
+                                    TextButton.icon(
+                                        onPressed: () => _abrirFormulario(p),
+                                        icon: const Icon(Icons.edit_outlined),
+                                        label: const Text('Editar')),
+                                  ])));
+                    }),
+      ),
+    ]);
+  }
+}
+
+enum _Resultado { guardado, baja }
+
+class PersonalForm extends StatefulWidget {
+  const PersonalForm({super.key, this.initial});
+  final Personal? initial;
+  @override
+  State<PersonalForm> createState() => _PersonalFormState();
+}
+
 class _PersonalFormState extends State<PersonalForm> {
-  final form = GlobalKey<FormState>(); late final TextEditingController codigo, nombre, apellido, ci, telefono, extra, carrera, area, inicio, fin;
-  late String sexo, estado; String? especialidad, supervisor; bool busy = false;
-  late Future<List<List<Json>>> _opciones;
-  GestionRepository get repo => context.read<GestionController>().repository;
-  @override void initState() { super.initState(); final row=widget.initial; sexo=row?['sexo']?.toString() ?? 'masculino'; estado=row?['estado']?.toString() ?? 'activo'; especialidad=row?['especialidad_id']?.toString(); supervisor=row?['supervisor_personal_id']?.toString(); codigo=TextEditingController(text: row?['codigo']?.toString() ?? ''); nombre=TextEditingController(text: row?['nombre']?.toString() ?? ''); apellido=TextEditingController(text: row?['apellido']?.toString() ?? ''); ci=TextEditingController(text: row?['ci']?.toString() ?? ''); telefono=TextEditingController(text: row?['telefono']?.toString() ?? ''); extra=TextEditingController(text: _extra(row)); carrera=TextEditingController(text: row?['carrera']?.toString() ?? ''); area=TextEditingController(text: row?['area_practica']?.toString() ?? ''); inicio=TextEditingController(text: row?['fecha_inicio']?.toString() ?? ''); fin=TextEditingController(text: row?['fecha_fin']?.toString() ?? ''); _opciones = Future.wait([repo.especialidades(), repo.personalPorTipo('medico')]); }
-  String _extra(Json? row) { if (widget.tipo == 'medico') return row?['matricula_profesional']?.toString() ?? ''; if (widget.tipo == 'enfermero') return row?['codigo_enfermero']?.toString() ?? ''; return row?['universidad']?.toString() ?? ''; }
-  @override void dispose() { for(final c in [codigo,nombre,apellido,ci,telefono,extra,carrera,area,inicio,fin]) { c.dispose(); } super.dispose(); }
-  Future<void> guardar() async { if (!form.currentState!.validate()) return; setState(() => busy = true); final personal = {'codigo': codigo.text.trim(), 'nombre': nombre.text.trim(), 'apellido': apellido.text.trim(), 'ci': ci.text.trim(), 'sexo': sexo, 'telefono': telefono.text.trim(), 'tipo_personal': widget.tipo, 'estado': estado}; final detalle = widget.tipo == 'medico' ? {'especialidad_id': especialidad, 'matricula_profesional': extra.text.trim()} : widget.tipo == 'enfermero' ? {'especialidad_id': especialidad, 'codigo_enfermero': extra.text.trim()} : {'universidad': extra.text.trim(), 'carrera': carrera.text.trim(), 'area_practica': area.text.trim(), 'fecha_inicio': inicio.text.trim().isEmpty ? null : inicio.text.trim(), 'fecha_fin': fin.text.trim().isEmpty ? null : fin.text.trim(), 'supervisor_personal_id': supervisor}; try { if (widget.initial == null) { await repo.crearPersonalConDetalle(personal: personal, tablaDetalle: widget.tipo == 'medico' ? 'medicos' : widget.tipo == 'enfermero' ? 'enfermeros' : 'pasantes', detalle: detalle, descripcion: 'Creó ${widget.tipo} ${nombre.text} ${apellido.text}'); } else { await repo.actualizarPersonalConDetalle(personalId: widget.initial!['id'].toString(), detalleId: widget.initial!['_detalle_id'].toString(), tipo: widget.tipo, personal: personal, detalle: detalle, descripcion: 'Modificó ${widget.tipo} ${nombre.text} ${apellido.text}'); } if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.initial == null ? 'Los datos fueron guardados correctamente.' : 'Los cambios fueron guardados correctamente.'))); Navigator.pop(context, true); } } catch (_) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No se pudieron guardar los datos.'))); } finally { if(mounted) setState(() => busy = false); } }
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text('${widget.initial == null ? 'Nuevo' : 'Editar'} ${widget.titulo.substring(0, widget.titulo.length - 1)}')), body: FutureBuilder<List<List<Json>>>(future: _opciones, builder: (_, s) { if (s.connectionState != ConnectionState.done) return const Center(child: Text('Cargando...')); final especialidades = s.data?.first ?? [], supervisores = s.data?.last ?? []; return Form(key: form, child: ListView(padding: const EdgeInsets.all(20), children: [Text('Datos personales', style: Theme.of(context).textTheme.titleLarge), ...[_campo(codigo,'Código'),_campo(nombre,'Nombre'),_campo(apellido,'Apellido'),_campo(ci,'CI'),_campo(telefono,'Teléfono')], DropdownButtonFormField(value: sexo, decoration: const InputDecoration(labelText: 'Sexo'), items: const ['masculino','femenino','otro'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(), onChanged:(v)=>setState(()=>sexo=v!)), DropdownButtonFormField(value: estado, decoration: const InputDecoration(labelText: 'Estado'), items: const ['activo','inactivo','suspendido'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(), onChanged:(v)=>setState(()=>estado=v!)), const SizedBox(height:16), Text('Datos específicos', style: Theme.of(context).textTheme.titleLarge), if(widget.tipo != 'pasante') DropdownButtonFormField<String>(value: especialidad, decoration: const InputDecoration(labelText: 'Especialidad'), items: especialidades.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text(x['nombre'].toString()))).toList(), onChanged:(v)=>setState(()=>especialidad=v), validator:(v)=>v==null?'Selecciona una especialidad':null), _campo(extra, widget.tipo == 'medico' ? 'Matrícula profesional' : widget.tipo == 'enfermero' ? 'Código de enfermero' : 'Universidad'), if(widget.tipo == 'pasante') ...[_campo(carrera, 'Carrera'),_campo(area, 'Área de práctica'),_campo(inicio, 'Fecha de inicio (AAAA-MM-DD)', required:false),_campo(fin, 'Fecha de finalización (AAAA-MM-DD)', required:false),DropdownButtonFormField<String>(value: supervisor, decoration: const InputDecoration(labelText: 'Supervisor'), items: supervisores.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text('${x['nombre']} ${x['apellido']}'))).toList(), onChanged:(v)=>setState(()=>supervisor=v))], const SizedBox(height:24), FilledButton(onPressed: busy ? null : guardar, child: Text(busy ? 'Guardando...' : widget.initial == null ? 'Guardar' : 'Guardar cambios'))])); }));
-  Widget _campo(TextEditingController c, String label, {bool required = true}) => Padding(padding: const EdgeInsets.only(bottom:12), child: TextFormField(controller:c, decoration:InputDecoration(labelText:label,border:const OutlineInputBorder()), validator:required ? (v)=>v==null||v.trim().isEmpty?'Este campo es obligatorio':null : null));
+  final _form = GlobalKey<FormState>();
+  late final TextEditingController _codigo, _nombre, _apellido, _ci, _telefono;
+  final _correo = TextEditingController();
+  final _password = TextEditingController();
+  late String _sexo, _tipo, _estado;
+  String? _especialidadId;
+  List<Especialidad> _especialidades = [];
+  bool _cargando = true, _ocupado = false, _ocultarPassword = true;
+  String? _errorOpciones, _error;
+  bool get _creando => widget.initial == null;
+  GestionController get _controller => context.read<GestionController>();
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.initial;
+    _codigo = TextEditingController(text: p?.codigo ?? '');
+    _nombre = TextEditingController(text: p?.nombre ?? '');
+    _apellido = TextEditingController(text: p?.apellido ?? '');
+    _ci = TextEditingController(text: p?.ci ?? '');
+    _telefono = TextEditingController(text: p?.telefono ?? '');
+    _sexo = p?.sexo ?? 'masculino';
+    _tipo = p?.tipoPersonal ?? 'medico';
+    _estado = p?.estado ?? 'activo';
+    _especialidadId = p?.especialidadId;
+    _cargarEspecialidades();
+  }
+
+  List<TextEditingController> get _campos =>
+      [_codigo, _nombre, _apellido, _ci, _telefono, _correo, _password];
+  void _limpiar() {
+    for (final campo in _campos) {
+      campo.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final campo in _campos) {
+      campo.clear();
+      campo.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _cargarEspecialidades() async {
+    setState(() {
+      _cargando = true;
+      _errorOpciones = null;
+    });
+    try {
+      final datos = await _controller.especialidadesParaPersonal(
+          actualId: widget.initial?.especialidadId);
+      if (!mounted) return;
+      final actual = widget.initial;
+      if (actual?.especialidadId != null &&
+          !datos.any((e) => e.id == actual!.especialidadId)) {
+        datos.add(Especialidad(
+            id: actual!.especialidadId,
+            nombre: actual.especialidadNombre ?? 'Especialidad actual',
+            estado: 'inactivo'));
+        datos.sort((a, b) => a.nombre.compareTo(b.nombre));
+      }
+      setState(() {
+        _especialidades = datos;
+        _cargando = false;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorOpciones = mensajeErrorPersonal(error);
+          _cargando = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _guardar() async {
+    if (_ocupado || !_form.currentState!.validate()) return;
+    final personal = Personal(
+        id: widget.initial?.id,
+        codigo: _codigo.text.trim(),
+        nombre: _nombre.text.trim(),
+        apellido: _apellido.text.trim(),
+        ci: _ci.text.trim(),
+        telefono: _telefono.text.trim(),
+        sexo: _sexo,
+        tipoPersonal: _tipo,
+        estado: _estado,
+        especialidadId: _especialidadId);
+    setState(() {
+      _ocupado = true;
+      _error = null;
+    });
+    try {
+      if (_creando) {
+        await _controller.crearPersonal(personal,
+            email: _correo.text.trim().toLowerCase(), password: _password.text);
+      } else {
+        await _controller.actualizarPersonal(personal);
+      }
+      if (!mounted) return;
+      _limpiar();
+      Navigator.pop(context, _Resultado.guardado);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = mensajeErrorPersonal(error);
+          if (_creando) _password.clear();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  Future<void> _darDeBaja() async {
+    if (_ocupado) return;
+    final confirmado = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+              title: const Text('Dar de baja'),
+              content: const Text(
+                  '¿Confirmas que deseas dar de baja a este personal?'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('Cancelar')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Dar de baja'))
+              ],
+            ));
+    if (!mounted || confirmado != true || _ocupado) return;
+    setState(() {
+      _ocupado = true;
+      _error = null;
+    });
+    try {
+      await _controller.darDeBajaPersonal(widget.initial!.id!);
+      if (!mounted) return;
+      _limpiar();
+      Navigator.pop(context, _Resultado.baja);
+    } catch (error) {
+      if (mounted) setState(() => _error = mensajeErrorPersonal(error));
+    } finally {
+      if (mounted) setState(() => _ocupado = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+      canPop: !_ocupado,
+      child: Scaffold(
+        appBar: AppBar(
+            title: Text(_creando ? 'Nuevo Personal' : 'Editar Personal')),
+        body: _cargando
+            ? const Center(child: CircularProgressIndicator())
+            : _errorOpciones != null
+                ? _EstadoError(
+                    mensaje: _errorOpciones!, onRetry: _cargarEspecialidades)
+                : Form(
+                    key: _form,
+                    child:
+                        ListView(padding: const EdgeInsets.all(20), children: [
+                      Text('Datos del personal',
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 16),
+                      _campo(_codigo, 'Código', minimo: 2, maximo: 30),
+                      _campo(_nombre, 'Nombre', minimo: 2, maximo: 80),
+                      _campo(_apellido, 'Apellido', minimo: 2, maximo: 80),
+                      _campo(_ci, 'CI'),
+                      _selector(
+                          'Sexo', _sexo, _sexos, (value) => _sexo = value),
+                      _campo(_telefono, 'Teléfono'),
+                      _selector('Tipo de personal', _tipo, _tipos,
+                          (value) => _tipo = value),
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _especialidadId ?? '',
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                                labelText: 'Especialidad',
+                                border: OutlineInputBorder()),
+                            items: [
+                              const DropdownMenuItem(
+                                  value: '', child: Text('Sin especialidad')),
+                              ..._especialidades.map((e) => DropdownMenuItem(
+                                  value: e.id!,
+                                  child: Text(
+                                      '${e.nombre}${e.estado == 'inactivo' ? ' (Inactiva)' : ''}')))
+                            ],
+                            onChanged: _ocupado
+                                ? null
+                                : (value) => setState(() => _especialidadId =
+                                    value == '' ? null : value),
+                          )),
+                      _selector('Estado', _estado, _estados,
+                          (value) => _estado = value),
+                      if (_creando) ...[
+                        const SizedBox(height: 12),
+                        Text('Datos de acceso',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                            controller: _correo,
+                            enabled: !_ocupado,
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            decoration: const InputDecoration(
+                                labelText: 'Correo',
+                                border: OutlineInputBorder()),
+                            validator: (value) {
+                              final correo = value?.trim() ?? '';
+                              if (correo.isEmpty) {
+                                return 'El correo es obligatorio.';
+                              }
+                              if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                                  .hasMatch(correo)) {
+                                return 'Ingresa un correo válido.';
+                              }
+                              return null;
+                            }),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                            controller: _password,
+                            enabled: !_ocupado,
+                            obscureText: _ocultarPassword,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            decoration: InputDecoration(
+                                labelText: 'Contraseña temporal',
+                                border: const OutlineInputBorder(),
+                                suffixIcon: IconButton(
+                                    tooltip: _ocultarPassword
+                                        ? 'Mostrar contraseña'
+                                        : 'Ocultar contraseña',
+                                    onPressed: _ocupado
+                                        ? null
+                                        : () => setState(() =>
+                                            _ocultarPassword =
+                                                !_ocultarPassword),
+                                    icon: Icon(_ocultarPassword
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined))),
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'La contraseña temporal es obligatoria.'
+                                : value.length < 10
+                                    ? 'La contraseña debe tener al menos 10 caracteres.'
+                                    : null),
+                      ],
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(_error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error))
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton(
+                          onPressed: _ocupado ? null : _guardar,
+                          child: Text(_ocupado ? 'Guardando...' : 'Guardar')),
+                      if (!_creando && widget.initial!.estado != 'inactivo')
+                        TextButton(
+                            onPressed: _ocupado ? null : _darDeBaja,
+                            child: const Text('Dar de baja')),
+                      TextButton(
+                          onPressed:
+                              _ocupado ? null : () => Navigator.pop(context),
+                          child: const Text('Cerrar')),
+                    ])),
+      ));
+
+  Widget _campo(TextEditingController controller, String label,
+          {int? minimo, int? maximo}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: TextFormField(
+            controller: controller,
+            enabled: !_ocupado,
+            decoration: InputDecoration(
+                labelText: label, border: const OutlineInputBorder()),
+            validator: minimo == null
+                ? null
+                : (value) {
+                    final texto = value?.trim() ?? '';
+                    if (texto.isEmpty) return '$label es obligatorio.';
+                    if (texto.length < minimo) {
+                      return '$label debe tener al menos $minimo caracteres.';
+                    }
+                    if (maximo != null && texto.length > maximo) {
+                      return '$label debe tener como máximo $maximo caracteres.';
+                    }
+                    return null;
+                  }),
+      );
+  Widget _selector(String label, String value, List<String> values,
+          ValueChanged<String> onChanged) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: DropdownButtonFormField<String>(
+            initialValue: value,
+            decoration: InputDecoration(
+                labelText: label, border: const OutlineInputBorder()),
+            items: values
+                .map((item) =>
+                    DropdownMenuItem(value: item, child: Text(_etiqueta(item))))
+                .toList(),
+            onChanged:
+                _ocupado ? null : (item) => setState(() => onChanged(item!)),
+            validator: (item) =>
+                values.contains(item) ? null : 'Selecciona un valor válido.'),
+      );
+}
+
+class _EstadoError extends StatelessWidget {
+  const _EstadoError({required this.mensaje, required this.onRetry});
+  final String mensaje;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+      child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.error_outline,
+                size: 48, color: Theme.of(context).colorScheme.error),
+            const SizedBox(height: 12),
+            Text(mensaje, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar')),
+          ])));
 }

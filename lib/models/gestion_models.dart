@@ -25,10 +25,27 @@ class Especialidad extends SupabaseModel {
 }
 
 class Personal extends SupabaseModel {
-  const Personal({this.id, required this.codigo, required this.nombre, required this.apellido, required this.ci, this.sexo, this.telefono, required this.tipoPersonal, this.estado = 'activo'});
-  final String? id, sexo, telefono; final String codigo, nombre, apellido, ci, tipoPersonal, estado;
-  factory Personal.fromMap(Json m) => Personal(id: _text(m['id']), codigo: _text(m['codigo']) ?? '', nombre: _text(m['nombre']) ?? '', apellido: _text(m['apellido']) ?? '', ci: _text(m['ci']) ?? '', sexo: _text(m['sexo']), telefono: _text(m['telefono']), tipoPersonal: _text(m['tipo_personal']) ?? '', estado: _text(m['estado']) ?? 'activo');
-  @override Json toMap() => {'codigo': codigo, 'nombre': nombre, 'apellido': apellido, 'ci': ci, 'sexo': sexo, 'telefono': telefono, 'tipo_personal': tipoPersonal, 'estado': estado};
+  const Personal({this.id, required this.codigo, required this.nombre, required this.apellido, this.ci, this.sexo = 'masculino', this.telefono, required this.tipoPersonal, this.estado = 'activo', this.especialidadId, this.especialidadNombre});
+  final String? id, ci, telefono, especialidadId, especialidadNombre;
+  final String codigo, nombre, apellido, sexo, tipoPersonal, estado;
+  factory Personal.fromMap(Json m) {
+    final especialidad = m['especialidades'];
+    return Personal(
+      id: _text(m['id']), codigo: _text(m['codigo']) ?? '',
+      nombre: _text(m['nombre']) ?? '', apellido: _text(m['apellido']) ?? '',
+      ci: _text(m['ci']), sexo: _text(m['sexo']) ?? 'masculino',
+      telefono: _text(m['telefono']), tipoPersonal: _text(m['tipo_personal']) ?? '',
+      estado: _text(m['estado']) ?? 'activo', especialidadId: _text(m['especialidad_id']),
+      especialidadNombre: especialidad is Map ? _text(especialidad['nombre']) : null,
+    );
+  }
+  @override
+  Json toMap() => {
+    'codigo': codigo.trim(), 'nombre': nombre.trim(), 'apellido': apellido.trim(),
+    'ci': ci == null || ci!.trim().isEmpty ? null : ci!.trim(),
+    'sexo': sexo, 'telefono': telefono == null || telefono!.trim().isEmpty ? null : telefono!.trim(),
+    'tipo_personal': tipoPersonal, 'estado': estado, 'especialidad_id': especialidadId,
+  };
   String get nombreCompleto => '$nombre $apellido';
 }
 

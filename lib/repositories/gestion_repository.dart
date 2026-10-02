@@ -7,6 +7,15 @@ import '../models/asistencia_errors.dart';
 class GestionRepository {
   GestionRepository(this.client);
   final SupabaseClient client;
+  Future<String> perfilActual() async {
+    final admin = await client.rpc('es_administrador');
+    if (admin == true) return 'administrador';
+    if (admin != false) throw StateError('Respuesta de perfil inválida.');
+    final personal = await client.rpc('es_personal');
+    if (personal == true) return 'personal';
+    if (personal != false) throw StateError('Respuesta de perfil inválida.');
+    return 'no_autorizado';
+  }
   Future<List<AsignacionTurno>> listarAsistencias() async {
     final admin = await administradorActual();
     if (admin == null) {

@@ -3,8 +3,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.accessDenied = false});
+  const LoginScreen({super.key, this.accessDenied = false, this.initialMessage});
   final bool accessDenied;
+  final String? initialMessage;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -18,7 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _message;
 
   @override
-  void initState() { super.initState(); if (widget.accessDenied) _message = 'No tienes permisos para acceder al sistema.'; }
+  void initState() { super.initState(); _message = widget.initialMessage; if (widget.accessDenied) _message = 'No tienes permisos para acceder al sistema.'; }
 
   @override
   void dispose() {

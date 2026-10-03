@@ -5,6 +5,7 @@ import 'controllers/preferences_controller.dart';
 import 'screens/auth_gate.dart';
 import 'screens/home_screen.dart';
 import 'screens/setup_required_screen.dart';
+import 'theme/app_theme.dart';
 
 class ProyectoFinalApp extends StatelessWidget {
   const ProyectoFinalApp({super.key});
@@ -18,8 +19,8 @@ class ProyectoFinalApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Gestion Hospitalaria',
       themeMode: prefs.themeMode,
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true, brightness: Brightness.light),
-      darkTheme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true, brightness: Brightness.dark),
+      theme: AppTheme.build(Brightness.light),
+      darkTheme: AppTheme.build(Brightness.dark),
       home: config.demoMode
           ? const HomeScreen()
           : config.hasSupabaseConfig

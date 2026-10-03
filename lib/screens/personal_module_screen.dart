@@ -1,3 +1,5 @@
+import '../widgets/responsive_content.dart';
+import '../widgets/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/gestion_controller.dart';
@@ -93,7 +95,7 @@ class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
             onPressed: () => _abrirFormulario(),
             icon: const Icon(Icons.add),
             label: const Text('Nuevo Personal')),
-        body: _contenido(),
+        body: ResponsiveContent(child: _contenido()),
       );
 
   Widget _contenido() {
@@ -121,8 +123,7 @@ class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
             decoration: const InputDecoration(
                 labelText: 'Buscar',
                 hintText: 'Código, nombre, CI, tipo, especialidad o estado',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder()),
+                prefixIcon: Icon(Icons.search)),
             onChanged: (_) => setState(() {}),
           )),
       Expanded(
@@ -143,16 +144,16 @@ class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(p.codigo,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge),
                                     Text(p.nombreCompleto,
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleMedium
                                             ?.copyWith(
                                                 fontWeight: FontWeight.bold)),
+                                    Text(p.codigo,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall),
                                     const SizedBox(height: 8),
                                     Text('Tipo: ${_etiqueta(p.tipoPersonal)}'),
                                     Text(
@@ -161,9 +162,10 @@ class _PersonalModuleScreenState extends State<PersonalModuleScreen> {
                                     Text('Sexo: ${_etiqueta(p.sexo)}'),
                                     Text(
                                         'Teléfono: ${p.telefono ?? 'Sin registrar'}'),
-                                    Chip(
-                                        label: Text(
-                                            'Estado: ${_etiqueta(p.estado)}')),
+                                    StatusChip(
+                                        status: p.estado,
+                                        label:
+                                            'Estado: ${_etiqueta(p.estado)}'),
                                     TextButton.icon(
                                         onPressed: () => _abrirFormulario(p),
                                         icon: const Icon(Icons.edit_outlined),
@@ -368,8 +370,7 @@ class _PersonalFormState extends State<PersonalForm> {
                             initialValue: _especialidadId ?? '',
                             isExpanded: true,
                             decoration: const InputDecoration(
-                                labelText: 'Especialidad',
-                                border: OutlineInputBorder()),
+                                labelText: 'Especialidad'),
                             items: [
                               const DropdownMenuItem(
                                   value: '', child: Text('Sin especialidad')),
@@ -395,9 +396,8 @@ class _PersonalFormState extends State<PersonalForm> {
                             enabled: !_ocupado,
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
-                            decoration: const InputDecoration(
-                                labelText: 'Correo',
-                                border: OutlineInputBorder()),
+                            decoration:
+                                const InputDecoration(labelText: 'Correo'),
                             validator: (value) {
                               final correo = value?.trim() ?? '';
                               if (correo.isEmpty) {
@@ -418,7 +418,6 @@ class _PersonalFormState extends State<PersonalForm> {
                             enableSuggestions: false,
                             decoration: InputDecoration(
                                 labelText: 'Contraseña temporal',
-                                border: const OutlineInputBorder(),
                                 suffixIcon: IconButton(
                                     tooltip: _ocultarPassword
                                         ? 'Mostrar contraseña'
@@ -449,6 +448,9 @@ class _PersonalFormState extends State<PersonalForm> {
                           child: Text(_ocupado ? 'Guardando...' : 'Guardar')),
                       if (!_creando && widget.initial!.estado != 'inactivo')
                         TextButton(
+                            style: TextButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.error),
                             onPressed: _ocupado ? null : _darDeBaja,
                             child: const Text('Dar de baja')),
                       TextButton(
@@ -465,8 +467,7 @@ class _PersonalFormState extends State<PersonalForm> {
         child: TextFormField(
             controller: controller,
             enabled: !_ocupado,
-            decoration: InputDecoration(
-                labelText: label, border: const OutlineInputBorder()),
+            decoration: InputDecoration(labelText: label),
             validator: minimo == null
                 ? null
                 : (value) {
@@ -487,8 +488,7 @@ class _PersonalFormState extends State<PersonalForm> {
         padding: const EdgeInsets.only(bottom: 12),
         child: DropdownButtonFormField<String>(
             initialValue: value,
-            decoration: InputDecoration(
-                labelText: label, border: const OutlineInputBorder()),
+            decoration: InputDecoration(labelText: label),
             items: values
                 .map((item) =>
                     DropdownMenuItem(value: item, child: Text(_etiqueta(item))))

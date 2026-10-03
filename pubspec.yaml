@@ -1,5 +1,5 @@
 name: gestion_hospitalaria
-description: Base academica generica y adaptable para el Trabajo Final del Diplomado UAJMS.
+description: modelo final para el diplomado web y movil.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -17,6 +17,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ">=4.0.0 <7.0.0"
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "iconos/equipo-medico.png"
 
 flutter:
   uses-material-design: true

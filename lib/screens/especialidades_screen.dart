@@ -1,3 +1,5 @@
+import '../widgets/responsive_content.dart';
+import '../widgets/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -44,7 +46,8 @@ class _EspecialidadesScreenState extends State<EspecialidadesScreen> {
       }
     });
     try {
-      final datos = await context.read<GestionController>().listarEspecialidades();
+      final datos =
+          await context.read<GestionController>().listarEspecialidades();
       if (!mounted || consulta != _consulta) return;
       setState(() {
         _especialidades = datos;
@@ -75,7 +78,8 @@ class _EspecialidadesScreenState extends State<EspecialidadesScreen> {
         : especialidad == null
             ? 'Especialidad creada correctamente.'
             : 'Especialidad actualizada correctamente.';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   @override
@@ -86,7 +90,7 @@ class _EspecialidadesScreenState extends State<EspecialidadesScreen> {
           icon: const Icon(Icons.add),
           label: const Text('Nuevo'),
         ),
-        body: _contenido(),
+        body: ResponsiveContent(child: _contenido()),
       );
 
   Widget _contenido() {
@@ -96,33 +100,44 @@ class _EspecialidadesScreenState extends State<EspecialidadesScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+            Icon(Icons.error_outline,
+                size: 48, color: Theme.of(context).colorScheme.error),
             const SizedBox(height: 12),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton.icon(onPressed: _cargar, icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
+            FilledButton.icon(
+                onPressed: _cargar,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar')),
           ]),
         ),
       );
     }
     final consulta = _busqueda.trim().toLowerCase();
-    final filtrados = _especialidades.where((item) =>
-        [item.nombre, item.descripcion ?? '', item.estado]
-            .any((valor) => valor.toLowerCase().contains(consulta))).toList();
+    final filtrados = _especialidades
+        .where((item) => [item.nombre, item.descripcion ?? '', item.estado]
+            .any((valor) => valor.toLowerCase().contains(consulta)))
+        .toList();
     return Column(children: [
       Padding(
         padding: const EdgeInsets.all(16),
         child: TextField(
           controller: _busquedaController,
-          decoration: const InputDecoration(labelText: 'Buscar', hintText: 'Nombre, descripción o estado', prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+              labelText: 'Buscar',
+              hintText: 'Nombre, descripción o estado',
+              prefixIcon: Icon(Icons.search)),
           onChanged: (value) => setState(() => _busqueda = value),
         ),
       ),
       Expanded(
         child: _especialidades.isEmpty
-            ? const Center(child: Text('No existen especialidades registradas.'))
+            ? const Center(
+                child: Text('No existen especialidades registradas.'))
             : filtrados.isEmpty
-                ? const Center(child: Text('No hay especialidades que coincidan con la búsqueda.'))
+                ? const Center(
+                    child: Text(
+                        'No hay especialidades que coincidan con la búsqueda.'))
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
                     itemCount: filtrados.length,
@@ -131,14 +146,29 @@ class _EspecialidadesScreenState extends State<EspecialidadesScreen> {
                       return Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(item.nombre, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 6),
-                            Text(item.descripcion?.isNotEmpty == true ? item.descripcion! : 'Sin descripción'),
-                            const SizedBox(height: 6),
-                            Chip(label: Text('Estado: ${_etiquetaEstado(item.estado)}')),
-                            TextButton.icon(onPressed: () => _abrirFormulario(item), icon: const Icon(Icons.edit_outlined), label: const Text('Editar')),
-                          ]),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.nombre,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                Text(item.descripcion?.isNotEmpty == true
+                                    ? item.descripcion!
+                                    : 'Sin descripción'),
+                                const SizedBox(height: 6),
+                                StatusChip(
+                                    status: item.estado,
+                                    label:
+                                        'Estado: ${_etiquetaEstado(item.estado)}'),
+                                TextButton.icon(
+                                    onPressed: () => _abrirFormulario(item),
+                                    icon: const Icon(Icons.edit_outlined),
+                                    label: const Text('Editar')),
+                              ]),
                         ),
                       );
                     },
@@ -170,7 +200,8 @@ class _EspecialidadFormState extends State<_EspecialidadForm> {
   void initState() {
     super.initState();
     _nombre = TextEditingController(text: widget.especialidad?.nombre ?? '');
-    _descripcion = TextEditingController(text: widget.especialidad?.descripcion ?? '');
+    _descripcion =
+        TextEditingController(text: widget.especialidad?.descripcion ?? '');
     _estado = widget.especialidad?.estado ?? 'activo';
   }
 
@@ -183,9 +214,15 @@ class _EspecialidadFormState extends State<_EspecialidadForm> {
 
   Future<void> _guardar() async {
     if (_ocupado || !_formKey.currentState!.validate()) return;
-    await _ejecutar(() => context.read<GestionController>().guardarEspecialidad(
-          Especialidad(id: widget.especialidad?.id, nombre: _nombre.text.trim(), descripcion: _descripcion.text.trim(), estado: _estado),
-        ), _Resultado.guardado);
+    await _ejecutar(
+        () => context.read<GestionController>().guardarEspecialidad(
+              Especialidad(
+                  id: widget.especialidad?.id,
+                  nombre: _nombre.text.trim(),
+                  descripcion: _descripcion.text.trim(),
+                  estado: _estado),
+            ),
+        _Resultado.guardado);
   }
 
   Future<void> _darDeBaja() async {
@@ -194,19 +231,32 @@ class _EspecialidadFormState extends State<_EspecialidadForm> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Dar de baja'),
-        content: const Text('¿Confirmas que deseas dar de baja esta especialidad?'),
+        content:
+            const Text('¿Confirmas que deseas dar de baja esta especialidad?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Dar de baja')),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Dar de baja')),
         ],
       ),
     );
     if (!mounted || confirmado != true || _ocupado) return;
-    await _ejecutar(() => context.read<GestionController>().darDeBajaEspecialidad(widget.especialidad!.id!), _Resultado.baja);
+    await _ejecutar(
+        () => context
+            .read<GestionController>()
+            .darDeBajaEspecialidad(widget.especialidad!.id!),
+        _Resultado.baja);
   }
 
-  Future<void> _ejecutar(Future<void> Function() operacion, _Resultado resultado) async {
-    setState(() { _ocupado = true; _error = null; });
+  Future<void> _ejecutar(
+      Future<void> Function() operacion, _Resultado resultado) async {
+    setState(() {
+      _ocupado = true;
+      _error = null;
+    });
     try {
       await operacion();
       if (mounted) Navigator.pop(context, resultado);
@@ -221,58 +271,99 @@ class _EspecialidadFormState extends State<_EspecialidadForm> {
   Widget build(BuildContext context) => PopScope(
         canPop: !_ocupado,
         child: AlertDialog(
-          title: Text(widget.especialidad == null ? 'Nueva especialidad' : 'Editar especialidad'),
+          title: Text(widget.especialidad == null
+              ? 'Nueva especialidad'
+              : 'Editar especialidad'),
           content: SizedBox(
             width: 520,
             child: Form(
               key: _formKey,
               child: SingleChildScrollView(
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  TextFormField(
-                    controller: _nombre,
-                    enabled: !_ocupado,
-                    decoration: const InputDecoration(labelText: 'Nombre', border: OutlineInputBorder()),
-                    validator: (value) {
-                      final nombre = value?.trim() ?? '';
-                      if (nombre.isEmpty) return 'El nombre es obligatorio.';
-                      if (nombre.length < 2) return 'El nombre debe tener al menos 2 caracteres.';
-                      if (nombre.length > 100) return 'El nombre debe tener como máximo 100 caracteres.';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _descripcion, enabled: !_ocupado, minLines: 2, maxLines: 4, decoration: const InputDecoration(labelText: 'Descripción', border: OutlineInputBorder())),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _estado,
-                    decoration: const InputDecoration(labelText: 'Estado', border: OutlineInputBorder()),
-                    items: ['activo', 'inactivo'].map((value) => DropdownMenuItem(value: value, child: Text(_etiquetaEstado(value)))).toList(),
-                    onChanged: _ocupado ? null : (value) => setState(() => _estado = value!),
-                    validator: (value) => ['activo', 'inactivo'].contains(value) ? null : 'Selecciona un estado válido.',
-                  ),
-                  if (_error != null) ...[const SizedBox(height: 12), Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error))],
-                ]),
+                child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextFormField(
+                        controller: _nombre,
+                        enabled: !_ocupado,
+                        decoration: const InputDecoration(labelText: 'Nombre'),
+                        validator: (value) {
+                          final nombre = value?.trim() ?? '';
+                          if (nombre.isEmpty)
+                            return 'El nombre es obligatorio.';
+                          if (nombre.length < 2)
+                            return 'El nombre debe tener al menos 2 caracteres.';
+                          if (nombre.length > 100)
+                            return 'El nombre debe tener como máximo 100 caracteres.';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                          controller: _descripcion,
+                          enabled: !_ocupado,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration:
+                              const InputDecoration(labelText: 'Descripción')),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: _estado,
+                        decoration: const InputDecoration(labelText: 'Estado'),
+                        items: ['activo', 'inactivo']
+                            .map((value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(_etiquetaEstado(value))))
+                            .toList(),
+                        onChanged: _ocupado
+                            ? null
+                            : (value) => setState(() => _estado = value!),
+                        validator: (value) =>
+                            ['activo', 'inactivo'].contains(value)
+                                ? null
+                                : 'Selecciona un estado válido.',
+                      ),
+                      if (_error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(_error!,
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.error))
+                      ],
+                    ]),
               ),
             ),
           ),
           actions: [
-            if (widget.especialidad?.estado == 'activo') TextButton(onPressed: _ocupado ? null : _darDeBaja, child: const Text('Dar de baja')),
-            TextButton(onPressed: _ocupado ? null : () => Navigator.pop(context), child: const Text('Cerrar')),
-            FilledButton(onPressed: _ocupado ? null : _guardar, child: Text(_ocupado ? 'Guardando...' : 'Guardar')),
+            if (widget.especialidad?.estado == 'activo')
+              TextButton(
+                  onPressed: _ocupado ? null : _darDeBaja,
+                  child: const Text('Dar de baja')),
+            TextButton(
+                onPressed: _ocupado ? null : () => Navigator.pop(context),
+                child: const Text('Cerrar')),
+            FilledButton(
+                onPressed: _ocupado ? null : _guardar,
+                child: Text(_ocupado ? 'Guardando...' : 'Guardar')),
           ],
         ),
       );
 }
 
-String _etiquetaEstado(String estado) => estado == 'activo' ? 'Activo' : 'Inactivo';
+String _etiquetaEstado(String estado) =>
+    estado == 'activo' ? 'Activo' : 'Inactivo';
 
 String _mensajeError(Object error) {
   if (error is PostgrestException) {
-    if (error.code == '23505') return 'Ya existe una especialidad con ese nombre.';
-    if (error.code == '23514') return 'Revisa el nombre y el estado de la especialidad.';
-    if (error.code == '42501') return 'No tienes permisos para realizar esta operación.';
-    if (error.code == 'PGRST116') return 'No se pudo acceder a la especialidad. Recarga la lista e inténtalo nuevamente.';
+    if (error.code == '23505')
+      return 'Ya existe una especialidad con ese nombre.';
+    if (error.code == '23514')
+      return 'Revisa el nombre y el estado de la especialidad.';
+    if (error.code == '42501')
+      return 'No tienes permisos para realizar esta operación.';
+    if (error.code == 'PGRST116')
+      return 'No se pudo acceder a la especialidad. Recarga la lista e inténtalo nuevamente.';
   }
-  if (error is AuthException) return 'La sesión no es válida. Vuelve a iniciar sesión.';
+  if (error is AuthException)
+    return 'La sesión no es válida. Vuelve a iniciar sesión.';
   return 'No se pudo completar la operación de especialidades. Revisa tu conexión e inténtalo nuevamente.';
 }

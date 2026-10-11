@@ -12,6 +12,7 @@ import 'repositories/supabase_registro_repository.dart';
 import 'repositories/gestion_repository.dart';
 import 'controllers/gestion_controller.dart';
 import 'services/preferences_service.dart';
+import 'services/session_guard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,9 +25,14 @@ Future<void> main() async {
   RegistroRepository repository = DemoRegistroRepository();
 
   if (config.useSupabase) {
+    SessionGuard? sessionGuard;
     await Supabase.initialize(
       url: config.supabaseUrl,
       publishableKey: config.supabaseKey,
+      httpClient: SessionHttpClient(
+        baseUrl: Uri.parse(config.supabaseUrl),
+        guard: () => sessionGuard ??= SessionGuard(Supabase.instance.client),
+      ),
     );
     repository = SupabaseRegistroRepository(Supabase.instance.client);
   }
@@ -35,10 +41,13 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<AppConfig>.value(value: config),
-        ChangeNotifierProvider<PreferencesController>.value(value: preferencesController),
+        ChangeNotifierProvider<PreferencesController>.value(
+            value: preferencesController),
         Provider<RegistroRepository>.value(value: repository),
         if (config.useSupabase)
-          ChangeNotifierProvider<GestionController>(create: (_) => GestionController(GestionRepository(Supabase.instance.client))),
+          ChangeNotifierProvider<GestionController>(
+              create: (_) => GestionController(
+                  GestionRepository(Supabase.instance.client))),
       ],
       child: const ProyectoFinalApp(),
     ),

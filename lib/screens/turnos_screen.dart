@@ -485,6 +485,13 @@ String _mensajeError(Object error) {
   if (error is AuthException)
     return 'La sesión no es válida. Vuelve a iniciar sesión e inténtalo nuevamente.';
   if (error is PostgrestException) {
+    const indiceDuplicado = 'uq_turnos_no_cancelados_fecha_tipo_horas_area';
+    final referenciaError = [error.message, error.details?.toString(), error.hint]
+        .whereType<String>()
+        .join(' ');
+    if (error.code == '23505' && referenciaError.contains(indiceDuplicado)) {
+      return 'Ya existe un turno con la misma fecha, tipo, horario y área. Verifica los datos e inténtalo nuevamente.';
+    }
     if (error.code == '23514')
       return 'Los datos del turno no cumplen las reglas permitidas.';
     if (error.code == '42501')

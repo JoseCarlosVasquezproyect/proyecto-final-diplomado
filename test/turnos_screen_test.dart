@@ -17,6 +17,7 @@ class TurnosRepositoryPrueba extends GestionRepository {
   List<Turno> rows = [];
   int consultas = 0;
   bool falla = false;
+  PostgrestException? errorGuardar;
   Completer<List<Turno>>? pendiente;
 
   @override
@@ -29,6 +30,7 @@ class TurnosRepositoryPrueba extends GestionRepository {
 
   @override
   Future<void> guardarTurno(Turno turno) async {
+    if (errorGuardar != null) throw errorGuardar!;
     final nuevo = Turno.fromMap({...turno.toMap(), 'id': turno.id ?? 'nuevo'});
     rows = [...rows.where((t) => t.id != nuevo.id), nuevo];
   }
@@ -50,6 +52,39 @@ Future<void> montar(WidgetTester tester, TurnosRepositoryPrueba repo) async {
 }
 
 void main() {
+  testWidgets('maps the configured duplicate index and leaves other 23505 errors distinct', (tester) async {
+    final repo = TurnosRepositoryPrueba()
+      ..errorGuardar = const PostgrestException(
+        code: '23505',
+        message: 'duplicate key violates unique constraint "uq_turnos_no_cancelados_fecha_tipo_horas_area"',
+      );
+    await montar(tester, repo);
+    await tester.tap(find.text('Nuevo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Urgencias');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Ya existe un turno con la misma fecha, tipo, horario y área. Verifica los datos e inténtalo nuevamente.'),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    final otroDuplicado = TurnosRepositoryPrueba()
+      ..errorGuardar = const PostgrestException(
+        code: '23505',
+        message: 'duplicate key violates unique constraint "otra_restriccion"',
+      );
+    await montar(tester, otroDuplicado);
+    await tester.tap(find.text('Nuevo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Urgencias');
+    await tester.tap(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Ya existe un turno'), findsNothing);
+    expect(find.textContaining('otra_restriccion'), findsOneWidget);
+  });
+
   testWidgets('crear, editar y cancelar actualizan la lista con una consulta por operación', (tester) async {
     final repo = TurnosRepositoryPrueba();
     await montar(tester, repo);

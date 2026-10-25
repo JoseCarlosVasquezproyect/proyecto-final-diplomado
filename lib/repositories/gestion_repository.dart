@@ -66,7 +66,7 @@ class GestionRepository {
     final rows = await client.from('asignaciones_turno').select(
       'id, turno_id, personal_id, rol_en_turno, observaciones, estado_asistencia, '
       'turnos(id, fecha, tipo, hora_inicio, hora_fin, area, estado), '
-      'personal(id, codigo, nombre, apellido, tipo_personal, estado, especialidad_id, especialidades(nombre))',
+      'personal!inner(id, codigo, nombre, apellido, tipo_personal, estado, user_id, especialidad_id, especialidades(nombre))',
     ).order('created_at', ascending: false);
     return rows.map(AsignacionTurno.fromMap).toList();
   }
@@ -80,8 +80,9 @@ class GestionRepository {
 
   Future<List<Personal>> personalParaAsignacion() async {
     final rows = await client.from('personal')
-        .select('id, codigo, nombre, apellido, tipo_personal, estado, especialidad_id, especialidades(nombre)')
-        .eq('estado', 'activo').order('apellido').order('nombre');
+        .select('id, codigo, nombre, apellido, tipo_personal, estado, user_id, especialidad_id, especialidades(nombre)')
+        .eq('estado', 'activo').not('user_id', 'is', null)
+        .order('apellido').order('nombre');
     return rows.map(Personal.fromMap).toList();
   }
 
@@ -89,10 +90,10 @@ class GestionRepository {
     final anterior = id == null ? null : await client.from('asignaciones_turno')
         .select('turno_id, personal_id').eq('id', id).single();
     // Volver a leer el tipo real evita guardar un rol desactualizado del selector.
-    final persona = await client.from('personal').select('tipo_personal, estado')
+    final persona = await client.from('personal').select('tipo_personal, estado, user_id')
         .eq('id', personalId).maybeSingle();
-    if (persona == null || (persona['estado'] != 'activo' && anterior?['personal_id'] != personalId)) {
-      throw const AsignacionException('Selecciona un personal activo. Recarga las opciones.');
+    if (persona == null || persona['estado'] != 'activo' || persona['user_id'] == null) {
+      throw const AsignacionException('Selecciona personal activo con cuenta vinculada. Recarga las opciones.');
     }
     final rol = persona['tipo_personal'];
     if (!['medico', 'enfermero', 'pasante'].contains(rol)) {
@@ -144,8 +145,8 @@ class GestionRepository {
   }
   Future<List<Personal>> listarPersonal() async {
     final rows = await client.from('personal').select(
-      'id, codigo, nombre, apellido, ci, sexo, telefono, tipo_personal, estado, especialidad_id, especialidades(nombre)',
-    ).order('nombre').order('apellido');
+      'id, codigo, nombre, apellido, ci, sexo, telefono, tipo_personal, estado, user_id, especialidad_id, especialidades(nombre)',
+    ).not('user_id', 'is', null).order('nombre').order('apellido');
     return rows.map(Personal.fromMap).toList();
   }
 

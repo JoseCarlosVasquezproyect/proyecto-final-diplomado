@@ -36,7 +36,7 @@ class _Backend {
     final table = request.uri.path.split('/').last;
     final single = request.headers.value('accept')?.contains('vnd.pgrst.object') == true;
     if (table == 'personal') {
-      final persona = {'id': 'persona-1', 'tipo_personal': tipoPersonal, 'estado': 'activo'};
+      final persona = {'id': 'persona-1', 'tipo_personal': tipoPersonal, 'estado': 'activo', 'user_id': 'usuario-1'};
       data = single ? persona : [persona];
     } else if (table == 'turnos') {
       final turno = {'id': 'turno-1', 'estado': 'programado'};

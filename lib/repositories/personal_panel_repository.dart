@@ -25,10 +25,13 @@ class PersonalPanelRepository {
 
   Future<List<AsignacionTurno>> misTurnos() async {
     final id = await _miId();
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) throw StateError('SesiÃ³n no vÃ¡lida.');
     final rows = await client.from('asignaciones_turno').select(
       'id,turno_id,personal_id,rol_en_turno,observaciones,estado_asistencia,'
-      'turnos(id,fecha,tipo,hora_inicio,hora_fin,area,estado,observaciones)',
-    ).eq('personal_id', id);
+      'turnos(id,fecha,tipo,hora_inicio,hora_fin,area,estado,observaciones),'
+      'personal!inner(user_id)',
+    ).eq('personal_id', id).eq('personal.user_id', userId);
     final result = rows.map(AsignacionTurno.fromMap).toList();
     if (result.any((a) => a.turno == null)) {
       throw StateError('No se pudo obtener un turno asignado.');

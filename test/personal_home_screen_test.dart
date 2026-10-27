@@ -1,66 +1,164 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:gestion_hospitalaria/models/gestion_models.dart';
 import 'package:gestion_hospitalaria/repositories/personal_panel_repository.dart';
 import 'package:gestion_hospitalaria/screens/personal_home_screen.dart';
 
 class _Repository extends PersonalPanelRepository {
-  _Repository() : super(SupabaseClient('https://example.com', 'test-key', authOptions: const AuthClientOptions(autoRefreshToken: false)));
+  _Repository()
+      : super(SupabaseClient('https://example.com', 'test-key',
+            authOptions: const AuthClientOptions(autoRefreshToken: false)));
+
   bool falla = false;
-  Completer<List<AsignacionTurno>>? pendiente;
-  List<AsignacionTurno> rows = [AsignacionTurno(turnoId: 'technical-turno', personalId: 'technical-personal', rolTurno: 'enfermero', estadoAsistencia: 'cumplido', observaciones: 'Guardia propia', turno: Turno(fecha: DateTime(2026, 9, 26), tipo: 'noche', horaInicio: '19:00:00', horaFin: '07:00:00', area: 'Medicina', observaciones: 'Turno nocturno'))];
+  Completer<PersonalDashboardData>? pendiente;
+  PersonalDashboardData data = _sampleData();
+
   @override
-  Future<Personal> misDatos() async => const Personal(codigo: 'ENF-001', nombre: 'AnaM', apellido: 'Demo', tipoPersonal: 'enfermero');
-  @override
-  Future<List<AsignacionTurno>> misTurnos() async {
+  Future<PersonalDashboardData> miDashboard() async {
     if (falla) throw StateError('Sensitive internal error');
     if (pendiente != null) return pendiente!.future;
-    return rows;
+    return data;
   }
 }
 
+PersonalDashboardData _sampleData({List<AsignacionTurno>? assignments}) {
+  final now = DateTime.now();
+  final tomorrow = DateTime(now.year, now.month, now.day + 1);
+  final later = DateTime(now.year, now.month, now.day + 3);
+  final history = now.subtract(const Duration(days: 2));
+  return PersonalDashboardData(
+    personal: const Personal(
+      codigo: 'ENF-001',
+      nombre: 'Ana',
+      apellido: 'Demo',
+      tipoPersonal: 'enfermero',
+      especialidadNombre: 'Cardiología',
+    ),
+    assignments: assignments ??
+        [
+          AsignacionTurno(
+            turnoId: 'turno-1',
+            personalId: 'personal-1',
+            rolTurno: 'enfermero',
+            estadoAsistencia: 'pendiente',
+            turno: Turno(
+              fecha: tomorrow,
+              tipo: 'noche',
+              horaInicio: '19:00:00',
+              horaFin: '07:00:00',
+              area: 'Medicina',
+              estado: 'programado',
+            ),
+          ),
+          AsignacionTurno(
+            turnoId: 'turno-2',
+            personalId: 'personal-1',
+            rolTurno: 'enfermero',
+            estadoAsistencia: 'pendiente',
+            turno: Turno(
+              fecha: later,
+              tipo: 'manana',
+              horaInicio: '08:00:00',
+              horaFin: '16:00:00',
+              area: 'Consulta externa',
+              estado: 'programado',
+            ),
+          ),
+          AsignacionTurno(
+            turnoId: 'turno-history',
+            personalId: 'personal-1',
+            rolTurno: 'enfermero',
+            estadoAsistencia: 'cumplido',
+            turno: Turno(
+              fecha: history,
+              tipo: 'tarde',
+              horaInicio: '12:00:00',
+              horaFin: '18:00:00',
+              area: 'Medicina',
+              estado: 'finalizado',
+            ),
+          ),
+        ],
+  );
+}
+
 void main() {
-  Future<void> mount(WidgetTester tester, _Repository repo) async {
-    tester.view.physicalSize = const Size(1200, 1200);
+  Future<void> mount(WidgetTester tester, _Repository repository) async {
+    tester.view.physicalSize = const Size(1200, 5000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(MaterialApp(home: PersonalHomeScreen(repository: repo)));
-    await tester.pump();
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData(useMaterial3: true),
+      home: PersonalHomeScreen(repository: repository),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
   }
-  testWidgets('muestra datos, turno y asistencia sin menú ni acciones administrativas', (tester) async {
+
+  testWidgets('muestra el resumen personal, agenda e historial propios',
+      (tester) async {
     await mount(tester, _Repository());
-    expect(find.text('Mi cuenta'), findsOneWidget);
-    expect(find.text('Nombre: AnaM'), findsOneWidget);
-    expect(find.text('Sin especialidad asignada.'), findsOneWidget);
-    expect(find.text('26/09/2026 · Noche'), findsOneWidget);
-    expect(find.text('19:00 - 07:00'), findsOneWidget);
-    expect(find.text('Asistencia: Cumplido'), findsOneWidget);
-    expect(find.text('Observaciones del turno: Turno nocturno'), findsOneWidget);
-    expect(find.text('Observaciones de la asignación: Guardia propia'), findsOneWidget);
-    expect(find.text('Cerrar sesión'), findsOneWidget);
-    expect(find.byType(Drawer), findsNothing);
-    for (final text in ['Editar', 'Cumplido', 'Falta', 'Personal', 'Especialidades', 'Asignaciones', 'Asistencia', 'Auditoría', 'Emergencias', 'technical-personal', 'technical-turno']) {
-      expect(find.text(text), findsNothing);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('¡Hola, Ana!'), findsOneWidget);
+    expect(find.text('Enfermero'), findsWidgets);
+    expect(find.text('Cardiología'), findsWidgets);
+    expect(find.text('Mi próximo turno'), findsOneWidget);
+    expect(find.text('Mi semana'), findsOneWidget);
+    expect(find.text('Próximos turnos'), findsWidgets);
+    await tester.tap(find.text('Ver todos mis turnos'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Todos tus turnos'), findsOneWidget);
+    expect(find.text('Ocultar todos'), findsOneWidget);
+    expect(find.text('Mi actividad'), findsOneWidget);
+    expect(find.textContaining('Asistencia: Cumplido'), findsWidgets);
+    expect(find.text('Accesos rápidos'), findsOneWidget);
+    for (final forbidden in [
+      'Especialidades',
+      'Asignaciones',
+      'Control de asistencia',
+      'Auditoría',
+      'technical-personal',
+    ]) {
+      expect(find.text(forbidden), findsNothing);
     }
   });
-  testWidgets('cargando, vacío, error seguro y reintento', (tester) async {
-    final repo = _Repository()..pendiente = Completer<List<AsignacionTurno>>();
-    await mount(tester, repo);
+
+  testWidgets('muestra estado vacío cuando no hay turnos próximos',
+      (tester) async {
+    final repository = _Repository()..data = _sampleData(assignments: []);
+    await mount(tester, repository);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('No tienes turnos próximos asignados.'), findsOneWidget);
+    expect(find.text('Aún no hay turnos finalizados en tu historial.'),
+        findsOneWidget);
+  });
+
+  testWidgets('muestra carga, error seguro y permite reintentar',
+      (tester) async {
+    final repository = _Repository()
+      ..pendiente = Completer<PersonalDashboardData>();
+    await mount(tester, repository);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    repo.pendiente!.complete([]);
-    await tester.pumpAndSettle();
-    expect(find.text('No tienes turnos asignados.'), findsOneWidget);
-    repo.pendiente = null; repo.falla = true;
-    await tester.tap(find.byTooltip('Actualizar'));
-    await tester.pumpAndSettle();
-    expect(find.text('No se pudieron cargar tus turnos.'), findsOneWidget);
+
+    repository.pendiente!.complete(_sampleData(assignments: []));
+    await tester.pump(const Duration(milliseconds: 100));
+    repository.pendiente = null;
+    repository.falla = true;
+    await tester.tap(find.byTooltip('Actualizar resumen'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('No se pudo cargar tu espacio personal'),
+        findsOneWidget);
     expect(find.textContaining('Sensitive'), findsNothing);
-    repo.falla = false;
+
+    repository.falla = false;
     await tester.tap(find.text('Reintentar'));
-    await tester.pumpAndSettle();
-    expect(find.text('Asistencia: Cumplido'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Mi semana'), findsOneWidget);
   });
 }

@@ -1,166 +1,301 @@
-# Gestion Hospitalaria
+# Gestión Hospitalaria
 
-## Descripción del proyecto
+**Desarrollo de una aplicación multiplataforma para la gestión y asignación de turnos de doctores, enfermeros y pasantes**
 
-Gestion Hospitalaria es una aplicación multiplataforma para administrar información del personal hospitalario. Centraliza el registro y consulta de médicos, enfermeros y pasantes, además de sus especialidades, turnos y emergencias.
+## 1. Descripción del proyecto
 
-Puede ejecutarse en modo demostración o conectarse a Supabase para usar autenticación y datos persistentes.
+Gestión Hospitalaria es una aplicación multiplataforma desarrollada con Flutter y Supabase, orientada a facilitar la administración del personal en el ámbito hospitalario.
 
-## Problema u objetivo de la aplicación
+El sistema permite gestionar la información de médicos, enfermeros y pasantes, sus especialidades, los turnos de trabajo y los registros de emergencias. Cuenta con control de acceso según el rol del usuario, de manera que los administradores pueden gestionar la información y el personal puede consultar sus datos y los turnos que tiene asignados.
 
-La administración manual o dispersa del personal dificulta conocer quién integra el equipo, cuál es su especialidad y qué turnos o emergencias están registrados. El sistema busca facilitar la gestión de médicos, enfermeros, pasantes, turnos y situaciones de emergencia, organizando la información para administradores autorizados.
+La aplicación puede ejecutarse en modo demostración o conectarse a Supabase para trabajar con autenticación y datos persistentes.
 
-## Funcionalidades implementadas
+## 2. Objetivo del sistema
 
-Las siguientes funciones se verifican directamente en el código actual:
+Facilitar la gestión y asignación de turnos del personal hospitalario mediante una aplicación multiplataforma que centraliza la información, reduce la dependencia de registros físicos y permite consultar los datos de manera organizada.
 
-- Autenticación con correo y contraseña mediante Supabase: inicio de sesión, registro de cuenta y cierre de sesión.
-- Control de acceso: la cuenta autenticada debe corresponder a un administrador activo para acceder a los módulos administrativos.
-- Gestión de médicos: alta, consulta de detalle, edición y cambio de estado; incluye datos personales, especialidad y matrícula profesional.
-- Gestión de enfermeros: alta, consulta de detalle, edición y cambio de estado; incluye datos personales, especialidad y código de enfermero.
-- Gestión de pasantes: alta, consulta de detalle, edición y cambio de estado; incluye universidad, carrera, área de práctica, fechas y supervisor médico opcional.
-- Gestión de especialidades: creación, edición, consulta, búsqueda y activación o desactivación.
-- Gestión de turnos: creación, edición, consulta, búsqueda y cambio de estado; incluye fecha, horarios, área, tipo y observaciones.
-- Gestión de emergencias: creación, edición, consulta, búsqueda y cambio de estado; incluye código, fecha, hora, área, tipo, prioridad y descripción.
-- Consulta de días y horarios de trabajo asociados al personal.
-- Registro de auditoría de altas y modificaciones realizadas por administradores en Supabase.
-- Validación de campos obligatorios y mensajes de carga o error en formularios.
+## 3. Pantallas y funcionalidades implementadas
 
-## Tecnologías utilizadas
+### 3.1. Pantalla de inicio de sesión
 
-- Flutter y Dart.
-- Provider para estado e inyección de dependencias.
-- Supabase Flutter para autenticación y acceso a datos.
-- PostgreSQL, provisto por Supabase.
-- SharedPreferences para preferencias locales.
-- Android, Gradle y Kotlin para compilación móvil.
-- Soporte Flutter para web, Windows y Linux.
-- Git/GitHub para control de versiones y alojamiento.
+- Inicio de sesión mediante correo electrónico y contraseña.
+- Acceso mediante Supabase Auth en el modo conectado.
+- Validación de credenciales y visualización de mensajes de error.
+- Acceso según el rol y los permisos de la cuenta.
 
-## Requisitos para ejecutar el proyecto
+### 3.2. Panel del administrador
 
-- Flutter SDK compatible con Dart `>=3.4.0 <4.0.0`, según `pubspec.yaml`. Compruebe el entorno con `flutter doctor`.
-- Para web: un navegador compatible, por ejemplo Google Chrome.
-- Para Android: Android Studio, Android SDK y un emulador o dispositivo físico con depuración USB. El mínimo configurado es Android API 24 (`minSdk = 24`).
-- Java 17, requerido por la configuración Android.
-- Git, si se obtendrá el código desde GitHub.
-- Un proyecto Supabase solo para ejecutar el modo conectado a datos reales.
+El administrador dispone de las funciones de gestión del sistema:
 
-## Instalación y ejecución
+- **Gestión de médicos:** registro, consulta, edición y cambio de estado.
+- **Gestión de enfermeros:** registro, consulta, edición y cambio de estado.
+- **Gestión de pasantes:** registro, consulta, edición y cambio de estado.
+- **Gestión de especialidades:** creación, edición, búsqueda y activación o desactivación.
+- **Gestión de turnos:** registro, consulta, edición, búsqueda y cambio de estado.
+- **Gestión de emergencias:** registro, consulta, edición, búsqueda y cambio de estado.
+- **Consulta de información del personal:** datos personales y días u horarios de trabajo disponibles en el sistema.
+- **Auditoría:** registro de altas y modificaciones realizadas por administradores en Supabase.
 
-### 1. Obtener el proyecto
+### 3.3. Panel del personal
+
+El personal dispone de una interfaz orientada a la consulta de su información y sus actividades laborales.
+
+- Consulta de sus datos personales.
+- Visualización de la información laboral disponible.
+- Consulta de turnos asignados, según los datos disponibles.
+- Acceso restringido de acuerdo con los permisos de su cuenta.
+
+El personal no dispone de los permisos administrativos para gestionar los registros generales del sistema.
+
+### 3.4. Validaciones y seguridad
+
+- Validación de campos obligatorios en los formularios.
+- Control de acceso según los roles de administrador y personal.
+- Autenticación mediante Supabase Auth.
+- Protección de datos mediante políticas de seguridad de nivel de fila (RLS) en Supabase.
+- Registro de auditoría de determinadas operaciones administrativas.
+
+## 4. Tecnologías utilizadas
+
+| Tecnología | Utilidad |
+|---|---|
+| Flutter | Desarrollo de la interfaz multiplataforma. |
+| Dart | Lenguaje de programación de la aplicación. |
+| Provider | Gestión del estado e inyección de dependencias. |
+| Supabase Auth | Autenticación de usuarios. |
+| Supabase / PostgreSQL | Almacenamiento y gestión de datos. |
+| PostgREST | Acceso a los datos mediante la API de Supabase. |
+| SharedPreferences | Almacenamiento de preferencias locales. |
+| Android SDK, Gradle y Kotlin | Configuración y compilación de la aplicación Android. |
+| Git y GitHub | Control de versiones y alojamiento del código fuente. |
+| Render | Despliegue de la versión web, según la configuración del proyecto. |
+
+## 5. Requisitos para instalar el proyecto en otra computadora
+
+Antes de ejecutar el sistema, se deben instalar las herramientas necesarias.
+
+### 5.1. Requisitos de software
+
+- **Sistema operativo:** Windows 10 o superior, u otro sistema compatible con Flutter.
+- **Git:** para descargar el repositorio desde GitHub.
+- **Flutter SDK:** se recomienda utilizar Flutter 3.44.8 para mantener el entorno de desarrollo utilizado en el proyecto.
+- **Dart:** se incluye con Flutter.
+- **Google Chrome:** para ejecutar la versión web durante el desarrollo.
+- **Android Studio y Android SDK:** necesarios para compilar o ejecutar la aplicación Android.
+- **Java 17:** para la compilación Android, de acuerdo con la configuración del proyecto.
+- **Conexión a Internet:** necesaria para descargar las dependencias y conectarse a Supabase.
+
+Si únicamente se necesita ejecutar la versión web ya desplegada, no es necesario instalar Flutter ni Android Studio en la computadora del usuario final.
+
+### 5.2. Comprobar la instalación de Flutter
+
+Una vez instalado Flutter, abra PowerShell o una terminal y ejecute:
 
 ```powershell
-git clone https://github.com/JoseCarlosVasquezproyect/modulo-3.git
-Set-Location modulo-3
+flutter --version
+flutter doctor
+git --version
 ```
 
-Si ya cuenta con el código, abra una terminal en la raíz, donde se encuentra `pubspec.yaml`.
+Si los comandos funcionan correctamente, continúe con la instalación del proyecto.
 
-### 2. Instalar dependencias
+## 6. Instalación y ejecución del proyecto
+
+### 6.1. Descargar el código fuente
+
+Abra PowerShell y ejecute:
+
+```powershell
+git clone https://github.com/JoseCarlosVasquezproyect/proyecto-final-diplomado.git
+cd proyecto-final-diplomado
+```
+
+Si el repositorio es privado, deberá contar con los permisos correspondientes para acceder.
+
+También puede descargar el código como archivo ZIP desde GitHub, extraerlo y abrir una terminal dentro de la carpeta del proyecto.
+
+### 6.2. Descargar las dependencias
+
+Dentro de la carpeta raíz del proyecto, donde se encuentra el archivo `pubspec.yaml`, ejecute:
 
 ```powershell
 flutter pub get
 ```
 
-### 3. Ejecutar en modo demostración
+Este comando descarga las dependencias de Flutter declaradas en el proyecto.
+
+Para comprobar que el entorno está preparado, puede ejecutar:
+
+```powershell
+flutter doctor
+flutter analyze
+```
+
+La ejecución de `flutter analyze` es opcional y sirve para revisar el código fuente.
+
+### 6.3. Ejecutar en modo demostración
+
+Si se desea probar el sistema sin configurar una conexión propia a Supabase, utilice:
 
 ```powershell
 flutter run --dart-define-from-file=config/demo.json
 ```
 
-### 4. Ejecutar con Supabase
+Este modo requiere que el archivo `config/demo.json` esté disponible en el proyecto. Los datos de demostración no deben confundirse con los registros persistentes de una base de datos real.
 
-Complete primero la [Configuración de Supabase](#configuración-de-supabase) y luego ejecute:
+### 6.4. Configurar Supabase para trabajar con datos reales
+
+Para utilizar el sistema con una base de datos propia, siga estos pasos:
+
+1. Cree o utilice un proyecto en Supabase.
+2. Abra el SQL Editor de Supabase.
+3. Ejecute el script `supabase/01_schema_y_rls.sql` para crear la estructura y las políticas incluidas en ese archivo.
+4. Compruebe si el proyecto requiere ejecutar migraciones adicionales o configurar funciones de Supabase para completar las funcionalidades utilizadas.
+5. Cree el archivo local de configuración a partir del ejemplo disponible.
+
+En PowerShell, ejecute:
 
 ```powershell
-flutter run --dart-define-from-file=config/local.json
+Copy-Item config/local.example.json config/local.json
 ```
 
-### 5. Ejecutar en Android
+Abra `config/local.json` y complete los valores de configuración correspondientes:
 
-Con un emulador iniciado o un dispositivo conectado:
-
-```powershell
-flutter devices
-flutter run -d <ID_DEL_DISPOSITIVO> --dart-define-from-file=config/local.json
+```json
+{
+  "DEMO_MODE": false,
+  "SUPABASE_URL": "https://TU-PROYECTO.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "TU_CLAVE_PUBLICA"
+}
 ```
 
-Para el modo demostración, sustituya `config/local.json` por `config/demo.json`.
+Sustituya los valores de ejemplo por la URL y la clave pública correspondientes al proyecto de Supabase.
 
-### 6. Ejecutar en web
+**Importante:** el archivo `config/local.json` es una configuración local y no debe subirse al repositorio. Nunca incluya la clave `service_role`, contraseñas ni otras credenciales privadas en el código de la aplicación.
 
-La plataforma web está disponible en el repositorio. Con Chrome instalado:
+### 6.5. Configurar una cuenta de acceso
+
+Para entrar en el sistema conectado a Supabase:
+
+1. Configure la autenticación de Supabase.
+2. Cree o habilite una cuenta de usuario.
+3. Para acceder al panel administrativo, compruebe que la cuenta tenga el registro de administrador activo que exige el sistema.
+4. Para acceder al panel del personal, configure el registro de personal y su relación con la cuenta de autenticación según el modelo de datos utilizado.
+
+Cada computadora puede ejecutar la aplicación, pero los usuarios deben disponer de cuentas autorizadas y de acceso a la misma configuración de Supabase para consultar los mismos datos.
+
+### 6.6. Ejecutar en la web
+
+Con la configuración de Supabase preparada, ejecute:
 
 ```powershell
 flutter run -d chrome --dart-define-from-file=config/local.json
 ```
 
-También puede usar `config/demo.json` para iniciar en modo demostración.
+Para el modo demostración:
 
-## Configuración de Supabase
+```powershell
+flutter run -d chrome --dart-define-from-file=config/demo.json
+```
 
-1. Cree un proyecto en Supabase.
-2. Ejecute `supabase/01_schema_y_rls.sql` en el SQL Editor de Supabase. El script crea la estructura de datos y las políticas de acceso.
-3. Cree la configuración local a partir del ejemplo:
+Flutter abrirá la aplicación en Google Chrome.
 
-   ```powershell
-   Copy-Item config/local.example.json config/local.json
-   ```
+### 6.7. Ejecutar en Android
 
-4. Edite solo `config/local.json`: complete `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY` con los valores públicos de su proyecto y mantenga `DEMO_MODE` en `false`.
-5. Cree una cuenta desde la pantalla de acceso o Supabase Auth y asegúrese de que tenga un registro activo en la tabla `administradores`, ya que el acceso administrativo depende de esa condición.
+Conecte un dispositivo Android con la depuración USB habilitada o inicie un emulador desde Android Studio.
 
-No incluya contraseñas, tokens, claves privadas ni la clave `service_role` en la aplicación. `config/local.json` es configuración local sensible y no debe subirse al repositorio.
+Compruebe los dispositivos disponibles:
 
-## Estructura general del proyecto
+```powershell
+flutter devices
+```
 
-| Ruta | Contenido |
-| --- | --- |
-| `lib/` | Código fuente principal de Flutter. |
-| `lib/screens/` | Pantallas de acceso, autorización, inicio y módulos de gestión. |
-| `lib/models/` | Modelos de administradores, personal, especialidades, turnos y emergencias. |
-| `lib/controllers/` | Controladores para datos y preferencias. |
-| `lib/repositories/` | Acceso a Supabase y repositorios de demostración. |
-| `lib/services/` | Servicios de autenticación y preferencias locales. |
-| `lib/config/` | Lectura de configuración enviada con `--dart-define`. |
-| `supabase/` | Script SQL del esquema y políticas RLS. |
-| `config/` | Configuración de ejemplo y demostración; `local.json` se crea localmente. |
-| `android/` | Configuración y código nativo Android. |
-| `web/` | Archivos de soporte de la versión web. |
-| `windows/` y `linux/` | Archivos de soporte para escritorio. |
-| `test/` | Pruebas automatizadas. |
-| `iconos/` | Recursos gráficos de la aplicación. |
-| `scripts/` | Scripts de verificación, demostración y preparación. |
-| `docs/` | Documentación complementaria. |
-| `pubspec.yaml` | Metadatos, restricciones de Dart y dependencias. |
+Ejecute la aplicación, sustituyendo `ID_DEL_DISPOSITIVO` por el identificador correspondiente:
 
-## Generación del APK
+```powershell
+flutter run -d ID_DEL_DISPOSITIVO --dart-define-from-file=config/local.json
+```
 
-Desde la raíz, para generar el APK release conectado a Supabase ejecute:
+Para ejecutar en modo demostración, sustituya `config/local.json` por `config/demo.json`.
+
+## 7. Ejecutar el sistema sin instalar Flutter
+
+Si el objetivo es permitir que otras personas utilicen el sistema sin instalar herramientas de desarrollo, existen dos alternativas.
+
+### 7.1. Acceso mediante la versión web
+
+Si la versión web está desplegada y disponible públicamente, basta con compartir su URL.
+
+Los usuarios podrán abrirla desde un navegador compatible sin descargar el código fuente ni instalar las dependencias de Flutter.
+
+Para utilizar los datos reales, la versión desplegada debe estar configurada con el proyecto de Supabase correspondiente y contar con las políticas de acceso adecuadas.
+
+**URL de la aplicación:** añadir aquí la dirección pública de Render cuando corresponda.
+
+### 7.2. Instalación mediante APK en Android
+
+También se puede compartir el archivo APK de la aplicación Android.
+
+El usuario deberá instalarlo en un dispositivo compatible, autorizando la instalación de aplicaciones de esa procedencia cuando sea necesario.
+
+El APK debe haberse compilado con la configuración adecuada para conectarse al proyecto de Supabase. No es necesario instalar Flutter en el teléfono.
+
+## 8. Generación de la aplicación Android (APK)
+
+Para generar el APK de producción desde la raíz del proyecto, ejecute:
 
 ```powershell
 flutter build apk --release --dart-define-from-file=config/local.json
 ```
 
-El APK se genera en:
+El archivo generado se encontrará en:
 
 ```text
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-Una compilación release firmada requiere la configuración privada de firma Android: `android/key.properties` y el keystore indicado allí. Use `android/key.properties.example` únicamente como referencia. No incluya contraseñas, el keystore ni `android/key.properties` en el repositorio. La configuración de Gradle impide la compilación release si falta `android/key.properties`.
+La compilación de producción requiere que la configuración de Supabase esté preparada. Si el proyecto exige firma de lanzamiento, también será necesario disponer de los archivos privados de firma Android configurados en Gradle.
 
-## Versión entregada
+No se deben compartir ni subir al repositorio las contraseñas, el keystore privado ni el archivo `android/key.properties`.
 
-La versión actual configurada en `pubspec.yaml` es **1.0.0+1**.
+## 9. Estructura general del proyecto
 
-## Limitaciones conocidas
+| Ruta | Descripción |
+|---|---|
+| `lib/` | Código fuente principal de Flutter. |
+| `lib/screens/` | Pantallas de acceso, paneles y módulos de gestión. |
+| `lib/models/` | Modelos de datos. |
+| `lib/controllers/` | Controladores de datos y preferencias. |
+| `lib/repositories/` | Acceso a datos y repositorios de demostración. |
+| `lib/services/` | Servicios de autenticación y preferencias locales. |
+| `lib/config/` | Lectura de la configuración de la aplicación. |
+| `supabase/` | Scripts SQL del esquema y las políticas de seguridad. |
+| `config/` | Archivos de ejemplo y configuración para demostración. |
+| `android/` | Configuración y código nativo Android. |
+| `web/` | Archivos de soporte para la versión web. |
+| `windows/` y `linux/` | Archivos de soporte para escritorio. |
+| `test/` | Pruebas automatizadas. |
+| `iconos/` | Recursos gráficos de la aplicación. |
+| `scripts/` | Scripts de verificación y preparación. |
+| `docs/` | Documentación complementaria. |
+| `pubspec.yaml` | Metadatos y dependencias de Flutter. |
 
-- El esquema de Supabase define asignaciones de turnos y equipos de emergencia, pero la interfaz actual no incluye pantallas ni acciones para administrar esas asignaciones o equipos.
-- Los módulos de gestión implementan cambios de estado; no ofrecen eliminación física de registros.
-- La operación completa de los módulos administrativos requiere Supabase configurado, una sesión iniciada y un administrador activo. El modo demostración no sustituye esa configuración para la gestión persistente.
+## 10. Limitaciones conocidas
 
-## Autor
+- La disponibilidad de funciones depende de la configuración de Supabase, los permisos de la cuenta y los datos registrados.
+- El esquema de datos contempla asignaciones de turnos y equipos de emergencia, pero no todas estas operaciones cuentan con pantallas de administración en la interfaz actual.
+- Los módulos de gestión permiten cambiar el estado de los registros, pero no ofrecen eliminación física desde la interfaz.
+- El modo demostración no sustituye la configuración de Supabase necesaria para trabajar con datos persistentes.
+- La ejecución en una computadora diferente requiere instalar las herramientas de desarrollo y dependencias si se desea ejecutar desde el código fuente.
+
+## 11. Versión del proyecto
+
+**Versión:** 1.0.0+1
+
+**Plataformas:** Web y Android.
+
+**Backend:** Supabase y PostgreSQL.
+
+## 12. Autor
 
 **Jose Carlos Vásquez Yurquina**
